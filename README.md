@@ -21,9 +21,9 @@ entry, every tool in reach - built type-safe for the people who carry
 the department on their screens.
 
 | 9 tools ▣ | 5 reports ▣ | 1 registry ▣ | Type-safe ▣ |
-|---|---|---|---|
+| --------- | ----------- | ------------ | ----------- |
 
-*The room - tools, reports, registries - is sealed.*
+_The room - tools, reports, registries - is sealed._
 
 > Built with Vue 3 + TypeScript 6, styled by Tailwind 4, hosted on
 > Firebase - strict from type-check to commit message.
