@@ -1,13 +1,12 @@
 # Rx Room
 
-```
-██████╗ ██╗  ██╗██████╗  ██████╗  ██████╗ ███╗   ███╗
-██╔══██╗╚██╗██╔╝██╔══██╗██╔═══██╗██╔═══██╗████╗ ████║
-██████╔╝ ╚███╔╝ ██████╔╝██║   ██║██║   ██║██╔████╔██║
-██╔══██╗ ███╔╝  ██╔══██╗██║   ██║██║   ██║██║╚██╔╝██║
-██║  ██║██╔██╗  ██║  ██║╚██████╔╝╚██████╔╝██║ ╚═╝ ██║
-╚═╝  ╚═╝╚═╝ ╚═╝ ╚═╝  ╚═╝╚═════╝  ╚═════╝  ╚═╝     ╚═╝
-```
+[![CI Quality](https://github.com/suradet-ps/rx-room/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/suradet-ps/rx-room/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/suradet-ps/rx-room/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/suradet-ps/rx-room/actions/workflows/codeql.yml)
+[![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
+[![Vue.js 3.5](https://img.shields.io/badge/Vue.js-3.5-4FC08D?logo=vue.js&logoColor=white)](https://vuejs.org/)
+[![TypeScript 6](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Tailwind CSS 4.3](https://img.shields.io/badge/Tailwind_CSS-4.3-38B2AC?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Firebase Hosting](https://img.shields.io/badge/Firebase-Hosting-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com/docs/hosting)
 
 ---
 
@@ -26,7 +25,7 @@ the department on their screens.
 
 *The room - tools, reports, registries - is sealed.*
 
-> Built with Vue 3 + TypeScript 5.9, styled by Tailwind 4, hosted on
+> Built with Vue 3 + TypeScript 6, styled by Tailwind 4, hosted on
 > Firebase - strict from type-check to commit message.
 >
 > **suradet-ps**, artifact keeper
