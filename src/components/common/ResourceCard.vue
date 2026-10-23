@@ -1,272 +1,254 @@
 <script setup lang="ts">
 import type { ResourceItem } from '@/types/resource';
 
-import { computed, ref } from 'vue';
+import { ArrowUpRight } from 'lucide-vue-next';
+import { computed } from 'vue';
 
-const props = defineProps<{
+import ResourceIcon from './ResourceIcon.vue';
+
+const props = withDefaults(defineProps<{
   item: ResourceItem;
-}>();
+  index?: number;
+}>(), {
+  index: 0,
+});
 
-const gradients = [
-  'linear-gradient(135deg, #e2f6d5 0%, #f0fbea 100%)',
-  'linear-gradient(135deg, var(--color-teal-claro) 0%, #eaf9fa 100%)',
-  'linear-gradient(135deg, var(--color-orange-claro) 0%, #fff5ee 100%)',
-  'linear-gradient(135deg, var(--color-purple-claro) 0%, #f5f2fa 100%)',
-];
-
-const ctaStyles = {
-  tool: {
-    background: 'var(--color-teal)',
-    color: 'var(--color-white)',
-    hoverShadow: 'rgba(23, 198, 210, 0.4)',
-  },
-  report: {
-    background: 'var(--color-pink)',
-    color: 'var(--color-white)',
-    hoverShadow: 'rgba(240, 98, 146, 0.4)',
-  },
-  external: {
-    background: 'var(--color-purple)',
-    color: 'var(--color-white)',
-    hoverShadow: 'rgba(139, 92, 246, 0.4)',
-  },
+const typeLabel: Record<ResourceItem['type'], string> = {
+  tool: 'TOOL',
+  report: 'REPORT',
+  external: 'EXTERNAL',
 };
 
-const categoryLabel = computed(() => {
-  if (props.item.type === 'tool')
-    return 'TOOL';
-  if (props.item.type === 'report')
-    return 'REPORT';
-  return 'EXTERNAL';
-});
+const typeName: Record<ResourceItem['type'], string> = {
+  tool: 'เครื่องมือ',
+  report: 'รายงาน',
+  external: 'ภายนอก',
+};
 
-const gradient = computed(() => {
-  const index = props.item.title.charCodeAt(0) % gradients.length;
-  return gradients[index];
-});
-
-const ctaStyle = computed(() => ctaStyles[props.item.type]);
-
-const imageUrl = computed(() => {
-  return `/images/${props.item.id}.png`;
-});
-
-const imageLoaded = ref(true);
+const code = computed(() => `${typeLabel[props.item.type]}-${String(props.index).padStart(2, '0')}`);
 </script>
 
 <template>
-  <div
-    class="combo"
-    :class="{ 'combo--disabled': !item.isActive }"
+  <article
+    class="card"
+    :class="[`card--${item.type}`, { 'card--off': !item.isActive }]"
   >
-    <div class="combo-image-wrapper">
-      <img
-        v-if="imageLoaded"
-        :src="imageUrl"
-        :alt="item.title"
-        class="combo-img"
-        loading="lazy"
-        decoding="async"
-        fetchpriority="low"
-        @load="imageLoaded = true"
-        @error="imageLoaded = false"
-      >
-      <div
-        v-if="!imageLoaded"
-        class="combo-fallback"
-        :style="{ background: gradient }"
-      >
-        <span>{{ item.title.charAt(0) }}</span>
-      </div>
+    <div class="card-top">
+      <span class="card-index mono">{{ String(index).padStart(2, '0') }}</span>
+      <span class="card-status">
+        <span
+          class="status-dot"
+          :class="item.isActive ? 'status-dot--live' : 'status-dot--pulse'"
+        />
+        {{ item.isActive ? 'พร้อมใช้' : 'ปิดปรับปรุง' }}
+      </span>
     </div>
 
-    <div class="combo-info">
-      <span class="combo-category">
-        {{ categoryLabel }}
-      </span>
-      <h3 class="combo-title">
+    <div class="card-body">
+      <div class="card-icon">
+        <ResourceIcon :name="item.iconName" :size="26" :stroke-width="1.5" />
+      </div>
+      <span class="card-type mono">{{ typeName[item.type] }}</span>
+      <h3 class="card-title">
         {{ item.title }}
       </h3>
-      <p class="combo-desc">
+      <p class="card-desc">
         {{ item.description }}
       </p>
+    </div>
 
+    <footer class="card-foot">
+      <span class="card-code mono">{{ code }}</span>
       <a
         v-if="item.isActive"
         :href="item.url"
         target="_blank"
-        class="combo-cta"
-        :style="{
-          'background': ctaStyle.background,
-          'color': ctaStyle.color,
-          '--hover-shadow': ctaStyle.hoverShadow,
-        }"
+        rel="noopener noreferrer"
+        class="card-link"
       >
         เปิดใช้งาน
+        <ArrowUpRight :size="16" :stroke-width="1.9" aria-hidden="true" />
       </a>
-      <span v-else class="combo-cta combo-cta--inactive">
-        Coming Soon
+      <span v-else class="card-link card-link--off">
+        เร็ว ๆ นี้
       </span>
-    </div>
-  </div>
+    </footer>
+  </article>
 </template>
 
 <style scoped>
-.combo {
-  display: flex;
-  flex-direction: column;
-  border-radius: 20px;
-  padding: 16px;
-  gap: 16px;
+.card {
+  --accent: var(--bottle);
+
   position: relative;
-  z-index: 1;
-  background: var(--color-white);
-  transition: transform 0.4s ease;
-  scroll-snap-align: start;
-  width: 280px;
-  flex-shrink: 0;
-}
-
-.combo::before {
-  content: '';
-  position: absolute;
-  inset: -3px;
-  background: linear-gradient(90deg, var(--color-purple), var(--color-purple-claro), var(--color-green));
-  border-radius: 23px;
-  z-index: -1;
-  opacity: 0;
-  transition: opacity 0.4s ease;
-}
-
-.combo:hover::before {
-  opacity: 1;
-}
-
-.combo::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--color-white);
-  border-radius: 20px;
-  z-index: -1;
-  transition: background-color 0.4s ease;
-}
-
-.combo:hover {
-  transform: translateY(-6px);
-}
-
-.combo-image-wrapper {
-  width: 100%;
-  height: 250px;
-  border-radius: 16px;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-}
-
-.combo-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 16px;
-  position: absolute;
-  top: 0;
-  left: 0;
-}
-
-.combo-fallback {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.combo-fallback span {
-  font-size: 3rem;
-  font-weight: 700;
-  color: rgba(0, 0, 0, 0.2);
-}
-
-.combo-info {
-  display: flex;
+  min-height: 280px;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 8px;
-}
-
-.combo-category {
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--color-gris);
-  background: var(--color-gris-claro);
-  padding: 8px 12px;
-  border-radius: 30px;
-  transition: transform 0.4s ease;
-}
-
-.combo-category:hover {
-  transform: scale(1.1);
-}
-
-.combo-title {
-  font-size: clamp(1.1rem, 1.3vw, 1.3rem);
-  font-weight: 700;
-  color: var(--color-text);
-  margin: 0;
-  line-height: 1.3;
-}
-
-.combo-desc {
-  font-size: clamp(0.75rem, 0.9vw, 0.85rem);
-  color: var(--color-gris);
-  margin: 0;
-  line-height: 1.3;
-  text-align: center;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  padding: 1rem 1.05rem 0.95rem;
   overflow: hidden;
-  max-width: 80%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper-raised);
+  transition:
+    transform 0.24s var(--ease-out),
+    border-color 0.24s ease,
+    box-shadow 0.24s ease;
 }
 
-.combo-cta {
+.card--report {
+  --accent: #b8411c;
+}
+
+.card--external {
+  --accent: var(--gold);
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  border-color: var(--ink);
+  box-shadow: 5px 5px 0 0 var(--accent);
+}
+
+.card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.card-index {
+  color: var(--ink-3);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+}
+
+.card-status {
   display: inline-flex;
-  padding: 10px 20px;
-  border-radius: 30px;
-  font-size: 0.8rem;
+  align-items: center;
+  gap: 0.42rem;
+  color: var(--ink-3);
+  font-size: 0.6rem;
+}
+
+.card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 1.1rem 0 1.2rem;
+}
+
+.card-icon {
+  display: grid;
+  place-items: center;
+  width: 3.15rem;
+  height: 3.15rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  color: var(--accent);
+  transition:
+    background-color 0.24s ease,
+    color 0.24s ease,
+    border-color 0.24s ease;
+}
+
+.card:hover .card-icon {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--paper-raised);
+}
+
+.card-type {
+  margin-top: 0.9rem;
+  color: var(--ink-3);
+  font-size: 0.56rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.card-title {
+  margin-top: 0.32rem;
+  font-size: clamp(1rem, 1.25vw, 1.16rem);
   font-weight: 600;
-  text-decoration: none;
-  transition: all 0.3s ease;
-  margin-top: 4px;
+  line-height: 1.35;
 }
 
-.combo-cta:hover {
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px -2px var(--hover-shadow);
+.card-desc {
+  display: -webkit-box;
+  max-width: 32ch;
+  margin-top: 0.45rem;
+  overflow: hidden;
+  color: var(--ink-3);
+  font-size: 0.76rem;
+  line-height: 1.6;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
-.combo-cta--inactive {
-  background: rgba(14, 15, 12, 0.08);
-  color: var(--color-gris);
+.card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--line-strong);
+}
+
+.card-code {
+  color: var(--ink-3);
+  font-size: 0.52rem;
+  letter-spacing: 0.08em;
+}
+
+.card-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 500;
+  transition:
+    gap 0.2s ease,
+    color 0.2s ease;
+}
+
+.card-link:hover {
+  gap: 0.5rem;
+  color: var(--accent);
+}
+
+.card-link--off {
+  color: var(--ink-3);
   cursor: default;
 }
 
-.combo-cta--inactive:hover {
-  transform: none;
-  box-shadow: none;
+.card-link--off:hover {
+  gap: 0.35rem;
+  color: var(--ink-3);
 }
 
-.combo--disabled {
-  opacity: 0.6;
-  filter: grayscale(0.3);
-  cursor: not-allowed;
-  pointer-events: none;
+.card--off {
+  background: repeating-linear-gradient(-45deg, transparent 0 7px, rgb(20 32 27 / 0.022) 7px 8px), var(--paper-raised);
+}
+
+.card--off:hover {
+  transform: translateY(-2px);
+  border-color: var(--line-strong);
+  box-shadow: 4px 4px 0 0 var(--line);
+}
+
+.card--off .card-title {
+  color: var(--ink-2);
+}
+
+.card--off .card-icon {
+  color: var(--ink-3);
+}
+
+@media (max-width: 640px) {
+  .card {
+    min-height: 250px;
+  }
 }
 </style>

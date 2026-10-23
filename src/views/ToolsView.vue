@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { TabType } from '@/stores/ui';
-import { storeToRefs } from 'pinia';
-import { computed } from 'vue';
 
+import { Search, X } from 'lucide-vue-next';
+import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+
 import ResourceCard from '@/components/common/ResourceCard.vue';
 import { useResources } from '@/composables/use-resources';
 import { useUIStore } from '@/stores/ui';
@@ -11,48 +12,60 @@ import { useUIStore } from '@/stores/ui';
 const route = useRoute();
 const router = useRouter();
 const store = useUIStore();
-const { searchQuery } = storeToRefs(store);
 const { resources, loading, error } = useResources();
 
-const tabItems: Array<{ key: Exclude<TabType, 'all'>; label: string; path: string }> = [
+const searchQuery = computed({
+  get: () => store.searchQuery,
+  set: value => store.setSearch(value),
+});
+
+type ViewTab = Exclude<TabType, 'all'>;
+
+const tabItems: Array<{ key: ViewTab; label: string; path: string }> = [
   { key: 'tool', label: 'เครื่องมือ', path: '/tools' },
   { key: 'report', label: 'รายงาน', path: '/reports' },
   { key: 'external', label: 'ภายนอก', path: '/external' },
 ];
 
-const viewMeta = {
+const viewMeta: Record<ViewTab, { title: string; description: string; index: string }> = {
   tool: {
     title: 'เครื่องมือปฏิบัติงาน',
-    description: '',
-    accent: 'tools',
+    description: 'เครื่องมือที่ใช้ทุกวันในห้องยา',
+    index: '02.1',
   },
   report: {
     title: 'รายงานและสถิติ',
-    description: '',
-    accent: 'reports',
+    description: 'รายงานและแดชบอร์ดสำหรับติดตามผล',
+    index: '02.2',
   },
   external: {
     title: 'ระบบงานภายนอก',
-    description: '',
-    accent: 'external',
+    description: 'ระบบภายนอกที่ต้องใช้งานต่อ',
+    index: '02.3',
   },
-} as const;
+};
 
-const currentTab = computed<Exclude<TabType, 'all'>>(() => {
+const currentTab = computed<ViewTab>(() => {
   const tab = route.meta.tab;
   return tab === 'report' || tab === 'external' ? tab : 'tool';
 });
 
 const currentMeta = computed(() => viewMeta[currentTab.value]);
 
+const counts = computed<Record<ViewTab, number>>(() => ({
+  tool: resources.value.filter(item => item.type === 'tool').length,
+  report: resources.value.filter(item => item.type === 'report').length,
+  external: resources.value.filter(item => item.type === 'external').length,
+}));
+
 const filteredResources = computed(() => {
   if (loading.value || error.value)
     return [];
 
   let items = resources.value.filter(resource => resource.type === currentTab.value);
+  const query = searchQuery.value.trim().toLowerCase();
 
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase();
+  if (query) {
     items = items.filter(resource =>
       resource.title.toLowerCase().includes(query)
       || resource.description.toLowerCase().includes(query),
@@ -62,336 +75,496 @@ const filteredResources = computed(() => {
   return items;
 });
 
+const availableCount = computed(() => filteredResources.value.filter(item => item.isActive).length);
+
 function navigateToTab(path: string) {
   void router.push(path);
+}
+
+function clearSearch() {
+  store.setSearch('');
 }
 </script>
 
 <template>
-  <div class="carta-container">
-    <section class="cart-title-nav">
-      <div class="cart-title hover-shrink" :class="`cart-title--${currentMeta.accent}`">
-        <h2>{{ currentMeta.title }}</h2>
-        <p v-if="currentMeta.description">
+  <div class="catalog">
+    <header class="catalog-head rise-in" style="--delay: 30ms">
+      <div class="head-main">
+        <p class="eyebrow">
+          Room 02 · Catalog
+        </p>
+        <h1>{{ currentMeta.title }}</h1>
+        <p class="head-desc">
           {{ currentMeta.description }}
         </p>
       </div>
+      <div class="head-stat">
+        <span class="head-stat-value mono">{{ String(filteredResources.length).padStart(2, '0') }}</span>
+        <span class="head-stat-label">รายการในหมวดนี้</span>
+        <span class="head-stat-note mono">{{ availableCount }} พร้อมใช้</span>
+      </div>
+    </header>
 
-      <div class="cart-nav" :class="`cart-nav--${currentMeta.accent}`" aria-label="เลือกประเภทข้อมูล">
-        <ul>
-          <li v-for="tab in tabItems" :key="tab.key">
-            <button
-              type="button"
-              class="cart-tab"
-              :class="{ active: currentTab === tab.key }"
-              :aria-current="currentTab === tab.key ? 'page' : undefined"
-              @click="navigateToTab(tab.path)"
-            >
-              {{ tab.label }}
-            </button>
-          </li>
-        </ul>
+    <div class="catalog-bar rise-in" style="--delay: 110ms">
+      <nav class="tabs" aria-label="เลือกประเภทข้อมูล">
+        <button
+          v-for="tab in tabItems"
+          :key="tab.key"
+          type="button"
+          class="tab"
+          :class="{ 'is-active': currentTab === tab.key }"
+          :aria-current="currentTab === tab.key ? 'page' : undefined"
+          @click="navigateToTab(tab.path)"
+        >
+          <span>{{ tab.label }}</span>
+          <span class="tab-count mono">{{ loading ? '...' : String(counts[tab.key]).padStart(2, '0') }}</span>
+        </button>
+      </nav>
+
+      <label class="search-field">
+        <Search :size="17" :stroke-width="1.8" aria-hidden="true" />
+        <span class="sr-only">ค้นหาในหมวดนี้</span>
+        <input
+          v-model="searchQuery"
+          type="search"
+          placeholder="ค้นหาในหมวดนี้"
+          autocomplete="off"
+        >
+        <button
+          v-if="searchQuery"
+          type="button"
+          class="search-clear"
+          aria-label="ล้างคำค้น"
+          @click="clearSearch"
+        >
+          <X :size="14" :stroke-width="2" />
+        </button>
+      </label>
+    </div>
+
+    <div class="result-line rise-in" style="--delay: 180ms">
+      <p class="mono">
+        <span>{{ currentMeta.index }}</span>
+        <span class="result-sep" aria-hidden="true">/</span>
+        <span v-if="searchQuery">ผลการค้นหา "{{ searchQuery }}"</span>
+        <span v-else>รายการทั้งหมด</span>
+      </p>
+      <p v-if="!loading" class="result-count">
+        {{ filteredResources.length }} รายการ
+      </p>
+    </div>
+
+    <section v-if="loading" class="catalog-grid" aria-label="กำลังโหลดข้อมูล">
+      <div v-for="n in 6" :key="n" class="skeleton-card">
+        <span class="skeleton-line skeleton-line--short" />
+        <span class="skeleton-icon" />
+        <span class="skeleton-line" />
+        <span class="skeleton-line skeleton-line--mid" />
+        <span class="skeleton-line skeleton-line--short" />
       </div>
     </section>
 
-    <section v-if="loading" class="resource-strip" aria-label="กำลังโหลดข้อมูล">
-      <div v-for="n in 6" :key="n" class="combo-skeleton">
-        <div class="skeleton-card animate-pulse" />
-        <div class="skeleton-line animate-pulse" />
-        <div class="skeleton-line skeleton-line--short animate-pulse" />
-        <div class="skeleton-pill animate-pulse" />
-      </div>
+    <section v-else-if="error" class="state-panel state-panel--error">
+      <p class="eyebrow">
+        Connection error
+      </p>
+      <h2>โหลดรายการไม่สำเร็จ</h2>
+      <p>ลองใหม่อีกครั้ง</p>
+      <p class="mono state-detail">
+        {{ error }}
+      </p>
     </section>
 
-    <section v-else-if="error" class="error-message">
-      Error loading resources: {{ error }}
-    </section>
-
-    <section v-else-if="filteredResources.length" class="resource-strip">
+    <section v-else-if="filteredResources.length" class="catalog-grid">
       <ResourceCard
-        v-for="item in filteredResources"
+        v-for="(item, index) in filteredResources"
         :key="item.id"
         :item="item"
+        :index="index + 1"
+        class="rise-in"
+        :style="{ '--delay': `${Math.min(index, 8) * 40 + 200}ms` }"
       />
     </section>
 
-    <section v-else class="empty-state">
-      <h3>ไม่พบข้อมูลที่ค้นหา</h3>
-      <p>ลองเปลี่ยนคำค้นหรือเลือกแท็บด้านบนเพื่อดูรายการในหมวดอื่น</p>
+    <section v-else class="state-panel">
+      <p class="eyebrow">
+        No results
+      </p>
+      <h2>ไม่พบข้อมูล</h2>
+      <p>ลองใช้คำอื่น หรือเลือกหมวดอื่น</p>
+      <button v-if="searchQuery" type="button" class="btn btn--ghost" @click="clearSearch">
+        ล้างคำค้น
+      </button>
     </section>
   </div>
 </template>
 
 <style scoped>
-.carta-container {
-  padding: 12px 10%;
-  animation: fadeIn 0.5s ease-in-out;
-  content-visibility: auto;
-  contain-intrinsic-size: 1px 5000px;
+.catalog {
+  width: min(100%, 1460px);
+  margin: 0 auto;
+  padding: clamp(1.5rem, 3vw, 3rem) clamp(1rem, 3.6vw, 3.25rem) 4.5rem;
 }
 
-.cart-title-nav {
-  display: grid;
-  grid-template-columns: minmax(320px, 1.15fr) repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  min-height: 130px;
-}
-
-.cart-title,
-.cart-nav {
-  min-width: 0;
-  border-radius: 20px;
-}
-
-.cart-title {
-  display: grid;
-  align-content: center;
-  gap: 8px;
-  padding: 20px 6%;
-  text-align: center;
-}
-
-.cart-title h2 {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-}
-
-.cart-title p {
-  margin: 0;
-  font-size: 0.92rem;
-  line-height: 1.4;
-  text-align: center;
-}
-
-.cart-title--tools {
-  background: var(--color-teal-claro);
-  color: var(--color-teal-oscuro);
-}
-
-.cart-title--reports {
-  background: var(--color-pink-claro);
-  color: var(--color-pink);
-}
-
-.cart-title--external {
-  background: var(--color-purple-claro);
-  color: var(--color-purple);
-}
-
-.cart-nav {
-  grid-column: span 3 / span 3;
-  padding: 28px 6%;
+.catalog-head {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 2rem;
+  padding-bottom: clamp(1.2rem, 2.4vw, 2rem);
+  border-bottom: 1px solid var(--ink);
 }
 
-.cart-nav--tools {
-  background-color: var(--color-teal);
+.head-main {
+  max-width: 46rem;
 }
 
-.cart-nav--reports {
-  background-color: var(--color-pink);
+.head-main h1 {
+  margin-top: 0.65rem;
+  font-size: clamp(2.3rem, 4.6vw, 4.2rem);
+  letter-spacing: -0.04em;
+  line-height: 1;
 }
 
-.cart-nav--external {
-  background-color: var(--color-purple);
+.head-desc {
+  max-width: 52ch;
+  margin-top: 0.9rem;
+  color: var(--ink-2);
+  font-size: clamp(0.84rem, 1vw, 0.94rem);
+  line-height: 1.7;
 }
 
-.cart-nav ul {
+.head-stat {
   display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-  list-style: none;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: flex-end;
+  padding-left: 2rem;
+  border-left: 1px solid var(--line);
 }
 
-.cart-tab {
-  position: relative;
+.head-stat-value {
+  font-size: clamp(3rem, 5vw, 4.6rem);
+  font-weight: 400;
+  letter-spacing: -0.06em;
+  line-height: 0.85;
+}
+
+.head-stat-label {
+  margin-top: 0.5rem;
+  color: var(--ink-2);
+  font-size: 0.72rem;
+}
+
+.head-stat-note {
+  margin-top: 0.15rem;
+  color: var(--ink-3);
+  font-size: 0.56rem;
+  letter-spacing: 0.06em;
+}
+
+.catalog-bar {
+  position: sticky;
+  top: 62px;
+  z-index: 20;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.2rem;
+  padding: 0.75rem 0;
+  background: rgb(244 241 233 / 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.tabs {
+  display: flex;
   overflow: hidden;
-  border: none;
-  border-radius: 30px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--paper-raised);
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.62rem 1rem;
+  border: 0;
+  border-right: 1px solid var(--line);
   background: transparent;
-  padding: 12px 20px;
-  color: var(--color-white);
-  font-size: clamp(0.9em, 1.5vw, 1.1em);
+  color: var(--ink-2);
+  font-size: 0.78rem;
+  font-weight: 500;
+  white-space: nowrap;
   cursor: pointer;
   transition:
-    background-color 0.5s,
-    color 0.5s,
-    box-shadow 0.5s;
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
-.cart-tab:hover,
-.cart-tab.active {
-  background-color: var(--color-white);
-  color: var(--color-negro-puro);
-  box-shadow: 0 5px 12px rgb(0 0 0 / 0.2);
+.tab:last-child {
+  border-right: 0;
 }
 
-.resource-strip {
+.tab:hover {
+  background: var(--mint-soft);
+}
+
+.tab.is-active {
+  background: var(--bottle);
+  color: var(--paper-raised);
+}
+
+.tab-count {
+  color: var(--ink-3);
+  font-size: 0.56rem;
+  letter-spacing: 0.04em;
+}
+
+.tab.is-active .tab-count {
+  color: var(--signal-light);
+}
+
+.search-field {
   display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  padding-top: 12px;
-  animation: fadeIn 0.4s ease-in-out;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  scroll-snap-type: x mandatory;
+  align-items: center;
+  gap: 0.55rem;
+  width: min(100%, 310px);
+  padding: 0 0.8rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--paper-raised);
+  color: var(--ink-3);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-.resource-strip::-webkit-scrollbar {
+.search-field:focus-within {
+  border-color: var(--ink);
+  box-shadow: 3px 3px 0 0 var(--signal);
+}
+
+.search-field input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.62rem 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.8rem;
+  outline: none;
+}
+
+.search-field input::placeholder {
+  color: var(--ink-3);
+}
+
+.search-field input::-webkit-search-cancel-button {
   display: none;
 }
 
-.combo-skeleton {
-  width: 280px;
-  flex-shrink: 0;
+.search-clear {
+  display: grid;
+  place-items: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border: 0;
+  border-radius: 50%;
+  background: var(--paper-deep);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.result-line {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px;
-  border-radius: 20px;
-  background: var(--color-white);
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 0 1.1rem;
+  color: var(--ink-3);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.skeleton-card,
-.skeleton-line,
-.skeleton-pill {
-  border-radius: 16px;
-  background: linear-gradient(90deg, #ececec 25%, #f6f6f6 37%, #ececec 63%);
-  background-size: 400% 100%;
+.result-line p {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.skeleton-card {
-  height: 220px;
+.result-sep {
+  color: var(--line-strong);
 }
 
-.skeleton-line {
-  height: 20px;
+.result-count {
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
-.skeleton-line--short {
-  width: 70%;
+.catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(0.8rem, 1.4vw, 1.15rem);
 }
 
-.skeleton-pill {
-  width: 42%;
-  height: 36px;
-}
-
-.animate-pulse {
-  animation: shimmer 1.4s linear infinite;
-}
-
-.empty-state,
-.error-message {
-  margin-top: 12px;
-  padding: 24px;
-  border-radius: 20px;
+.state-panel {
+  padding: clamp(2rem, 5vw, 4rem) 1.5rem;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: rgb(251 250 245 / 0.6);
   text-align: center;
 }
 
-.empty-state {
-  background: var(--color-orange-claro);
-  color: var(--color-orange-fuerte);
+.state-panel h2 {
+  margin-top: 0.8rem;
+  font-size: clamp(1.4rem, 2.4vw, 2rem);
 }
 
-.empty-state h3 {
-  margin: 0 0 8px;
+.state-panel p:not(.eyebrow) {
+  max-width: 42ch;
+  margin: 0.65rem auto 0;
+  color: var(--ink-3);
+  font-size: 0.82rem;
 }
 
-.error-message {
-  background: var(--color-white);
-  color: var(--color-orange-fuerte);
+.state-panel .eyebrow {
+  justify-content: center;
 }
 
-.hover-shrink:hover {
-  transform: scale(0.97);
+.state-panel .btn {
+  margin-top: 1.2rem;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
+.state-panel--error {
+  border-color: var(--signal);
+  background: var(--signal-soft);
+}
 
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+.state-detail {
+  margin-top: 0.8rem !important;
+  color: var(--signal-deep) !important;
+  font-size: 0.62rem !important;
+}
+
+.skeleton-card {
+  display: flex;
+  min-height: 280px;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper-raised);
+}
+
+.skeleton-line,
+.skeleton-icon {
+  display: block;
+  height: 0.7rem;
+  border-radius: var(--radius-xs);
+  background: linear-gradient(90deg, var(--paper-deep) 25%, var(--paper) 50%, var(--paper-deep) 75%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+.skeleton-line--short {
+  width: 24%;
+}
+
+.skeleton-line--mid {
+  width: 68%;
+}
+
+.skeleton-icon {
+  width: 3.15rem;
+  height: 3.15rem;
+  margin-top: 1.5rem;
+  border-radius: var(--radius-sm);
 }
 
 @keyframes shimmer {
   0% {
-    background-position: -400px 0;
+    background-position: 100% 0;
   }
-
   100% {
-    background-position: 400px 0;
+    background-position: -100% 0;
   }
 }
 
-@media (max-width: 1440px) {
-  .carta-container {
-    padding: 6dvh 4%;
+@media (max-width: 1180px) {
+  .catalog-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 1280px) {
-  .carta-container {
-    padding: 10dvh 2%;
-  }
-}
-
-@media (max-width: 1024px) {
-  .carta-container {
-    padding: 6.5dvh 4%;
+@media (max-width: 820px) {
+  .catalog-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 1.2rem;
   }
 
-  .cart-title-nav {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto;
-    min-height: auto;
+  .head-stat {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0.7rem;
+    padding: 0;
+    border-left: 0;
   }
 
-  .cart-nav {
-    grid-column: 1;
-  }
-}
-
-@media (max-width: 768px) {
-  .carta-container {
-    padding: 16px;
-    padding-bottom: 80px;
+  .head-stat-value {
+    font-size: 2.6rem;
   }
 
-  .cart-nav {
-    padding: 20px 4%;
+  .head-stat-label {
+    margin-top: 0;
   }
 
-  .cart-nav ul {
-    gap: 8px;
+  .catalog-bar {
+    top: 58px;
+    flex-direction: column;
+  }
+
+  .tabs {
+    width: 100%;
+  }
+
+  .tab {
+    flex: 1;
     justify-content: center;
+    padding: 0.58rem 0.5rem;
+    font-size: 0.72rem;
   }
 
-  .cart-tab {
-    padding: 8px 14px;
-    font-size: 0.85rem;
+  .search-field {
+    width: 100%;
   }
 }
 
-@media (max-width: 480px) {
-  .carta-container {
-    padding-bottom: 90px;
+@media (max-width: 680px) {
+  .catalog {
+    padding-right: 1rem;
+    padding-left: 1rem;
   }
 
-  .cart-title h2 {
-    font-size: 1.25rem;
+  .catalog-grid {
+    grid-template-columns: 1fr;
   }
 
-  .cart-title p {
-    font-size: 0.82rem;
+  .head-main h1 {
+    font-size: clamp(2.1rem, 10vw, 2.8rem);
+  }
+
+  .result-line {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.35rem;
   }
 }
 </style>

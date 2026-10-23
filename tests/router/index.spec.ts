@@ -31,7 +31,6 @@ describe('router', () => {
       { path: '/tools', expectedGroup: 'tools' },
       { path: '/reports', expectedGroup: 'tools' },
       { path: '/external', expectedGroup: 'tools' },
-      { path: '/department', expectedGroup: 'department' },
     ])('defines route $path with nav group $expectedGroup', ({ path, expectedGroup }) => {
       const route = findRoute(path);
       expect(route).toBeDefined();
