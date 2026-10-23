@@ -9,13 +9,14 @@ import {
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
+import AnimatedNumber from '@/components/common/AnimatedNumber.vue';
 import ResourceIcon from '@/components/common/ResourceIcon.vue';
 import { useResources } from '@/composables/use-resources';
 import { useUIStore } from '@/stores/ui';
 
 const router = useRouter();
 const store = useUIStore();
-const { resources, loading } = useResources();
+const { resources } = useResources();
 
 const query = ref('');
 
@@ -122,40 +123,64 @@ function pad(value: number): string {
         </div>
       </div>
 
-      <aside class="index-card rise-in" style="--delay: 150ms" aria-label="สารบัญห้องยา">
-        <div class="index-top">
-          <span>Room index</span>
-          <span>{{ yearLabel }}</span>
+      <aside class="rx-ticket rise-in" style="--delay: 120ms" aria-label="สารบัญห้องยา">
+        <div class="rx-top">
+          <header class="rx-head">
+            <span class="rx-kicker mono">Rx Index</span>
+            <span class="rx-year mono">{{ yearLabel }}</span>
+          </header>
+
+          <div class="rx-emblem" aria-hidden="true">
+            <span class="rx-bracket rx-bracket--tl" />
+            <span class="rx-bracket rx-bracket--tr" />
+            <span class="rx-bracket rx-bracket--bl" />
+            <span class="rx-bracket rx-bracket--br" />
+            <span class="rx-orbit rx-orbit--outer" />
+            <span class="rx-orbit rx-orbit--inner" />
+            <span class="rx-mark serif">Rx</span>
+            <span class="rx-dot" />
+            <span class="rx-caption mono">ROOM 01 · SABOT</span>
+          </div>
         </div>
 
-        <div class="index-figure" aria-hidden="true">
-          <span class="figure-ring figure-ring--one" />
-          <span class="figure-ring figure-ring--two" />
-          <span class="figure-rx serif">Rx</span>
-          <span class="figure-dot" />
-          <span class="figure-caption mono">SABOT<br>ROOM 01</span>
+        <div class="rx-perforation" aria-hidden="true">
+          <span class="rx-seal mono">RX · 01</span>
         </div>
 
-        <ul class="index-list">
-          <li v-for="(group, index) in groups" :key="group.key">
-            <a :href="group.path" @click.prevent="router.push(group.path)">
-              <span class="index-no mono">{{ pad(index + 1) }}</span>
-              <span class="index-name">
-                {{ group.label }}
-                <small>{{ group.labelEn }}</small>
-              </span>
-              <strong class="index-count">
-                <template v-if="loading">...</template>
-                <template v-else>{{ pad(counts[group.key]) }}</template>
-              </strong>
-              <ArrowUpRight :size="15" :stroke-width="1.8" aria-hidden="true" />
-            </a>
-          </li>
-        </ul>
+        <div class="rx-stub">
+          <div class="rx-stub-head">
+            <span class="mono">Room index</span>
+            <span class="mono">{{ pad(groups.length) }} หมวด</span>
+          </div>
 
-        <div class="index-foot">
-          <span class="index-live"><span class="status-dot status-dot--live" /> พร้อมใช้งาน</span>
-          <span class="mono">{{ activeCount }} / {{ totalCount }}</span>
+          <ul class="rx-list">
+            <li v-for="(group, index) in groups" :key="group.key">
+              <a :href="group.path" @click.prevent="router.push(group.path)">
+                <span class="rx-row-no mono">{{ pad(index + 1) }}</span>
+                <span class="rx-row-name">
+                  <strong>{{ group.label }}</strong>
+                  <small>{{ group.labelEn }}</small>
+                </span>
+                <AnimatedNumber class="rx-row-count" :value="counts[group.key]" />
+                <span class="rx-row-arrow" aria-hidden="true">
+                  <ArrowUpRight :size="16" :stroke-width="1.8" />
+                </span>
+              </a>
+            </li>
+          </ul>
+
+          <div class="rx-stub-foot">
+            <span class="rx-live">
+              <span class="status-dot status-dot--live" />
+              พร้อมใช้
+            </span>
+            <span class="rx-barcode" aria-hidden="true" />
+            <span class="rx-total mono">
+              <AnimatedNumber :value="activeCount" />
+              /
+              <AnimatedNumber :value="totalCount" />
+            </span>
+          </div>
         </div>
       </aside>
     </header>
@@ -224,13 +249,15 @@ function pad(value: number): string {
 
 .hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.32fr) minmax(320px, 0.68fr);
-  align-items: stretch;
-  gap: clamp(1.25rem, 2.8vw, 2.5rem);
+  grid-template-columns: minmax(340px, 0.82fr) minmax(0, 1.18fr);
+  grid-template-areas: 'index main';
+  align-items: center;
+  gap: clamp(1.75rem, 4vw, 4.5rem);
 }
 
 .hero-main {
   display: flex;
+  grid-area: main;
   flex-direction: column;
   justify-content: center;
   min-width: 0;
@@ -411,149 +438,389 @@ function pad(value: number): string {
   color: var(--signal-deep);
 }
 
-.index-card {
+.rx-ticket {
+  position: relative;
+  z-index: 1;
   display: flex;
+  grid-area: index;
+  width: 100%;
+  max-width: 440px;
   flex-direction: column;
-  min-height: 100%;
-  padding: 1.15rem 1.15rem 1rem;
-  border-radius: var(--radius-sm);
-  background: linear-gradient(160deg, rgb(255 255 255 / 0.03), transparent 55%), var(--bottle);
-  color: var(--paper-raised);
-  box-shadow: 8px 8px 0 0 var(--mint);
+  justify-self: start;
+  filter: drop-shadow(0 20px 30px rgb(20 32 27 / 0.14));
+  transform: rotate(-1.2deg);
+  transition:
+    transform 0.5s var(--ease-out),
+    filter 0.5s ease;
 }
 
-.index-top {
+.rx-ticket::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: 1px solid var(--line-strong);
+  border-radius: 24px;
+  background: var(--mint);
+  transform: translate(12px, 14px) rotate(1.2deg);
+  transition: transform 0.5s var(--ease-out);
+}
+
+.rx-ticket:hover {
+  filter: drop-shadow(0 26px 34px rgb(20 32 27 / 0.18));
+  transform: translateY(-6px) rotate(0deg);
+}
+
+.rx-ticket:hover::before {
+  transform: translate(18px, 20px) rotate(2.4deg);
+}
+
+.rx-top {
+  position: relative;
+  overflow: hidden;
+  padding: 0.95rem 1.05rem 0.8rem;
+  border: 2px solid var(--ink);
+  border-bottom: 0;
+  border-radius: 22px 22px 0 0;
+  background:
+    linear-gradient(var(--signal) 6px, transparent 6px),
+    radial-gradient(circle at 84% 20%, rgb(239 90 47 / 0.08), transparent 32%), var(--paper-raised);
+}
+
+.rx-top::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 36%, rgb(239 90 47 / 0.09) 50%, transparent 64%);
+  transform: translateX(-120%);
+  transition: transform 0.9s var(--ease-out);
+}
+
+.rx-ticket:hover .rx-top::after {
+  transform: translateX(120%);
+}
+
+.rx-head {
+  position: relative;
+  z-index: 1;
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  color: rgb(251 250 245 / 0.7);
-  font-family: var(--font-mono);
+  gap: 1rem;
+  color: var(--ink-3);
+}
+
+.rx-kicker {
   font-size: 0.58rem;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
 }
 
-.index-figure {
-  position: relative;
-  display: grid;
-  place-items: center;
-  height: clamp(150px, 16vw, 210px);
-  margin: 0.8rem 0 0.9rem;
-  overflow: hidden;
+.rx-year {
+  color: var(--signal-deep);
+  font-size: 0.54rem;
+  letter-spacing: 0.06em;
 }
 
-.figure-ring {
+.rx-emblem {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  height: clamp(185px, 18vw, 226px);
+  margin: 0.35rem 0 0;
+}
+
+.rx-orbit {
   position: absolute;
-  border: 1px solid rgb(251 250 245 / 0.14);
   border-radius: 50%;
 }
 
-.figure-ring--one {
-  width: 190px;
-  height: 190px;
+.rx-orbit--outer {
+  width: clamp(174px, 16.5vw, 212px);
+  aspect-ratio: 1;
+  border: 1px solid rgb(20 32 27 / 0.14);
 }
 
-.figure-ring--two {
-  width: 130px;
-  height: 130px;
-  border-style: dashed;
+.rx-orbit--inner {
+  width: clamp(118px, 11.5vw, 146px);
+  aspect-ratio: 1;
+  border: 1px dashed rgb(20 32 27 / 0.24);
+  animation: rx-spin 32s linear infinite;
 }
 
-.figure-rx {
+.rx-mark {
   position: relative;
   z-index: 1;
-  font-size: clamp(4.6rem, 6vw, 6.4rem);
+  color: var(--bottle);
+  font-size: clamp(5rem, 5.8vw, 6.6rem);
   font-style: italic;
+  letter-spacing: -0.06em;
   line-height: 0.8;
 }
 
-.figure-dot {
+.rx-dot {
   position: absolute;
-  top: 18%;
-  right: 21%;
+  top: 22%;
+  right: 24%;
   width: 9px;
   height: 9px;
   border-radius: 50%;
   background: var(--signal);
   box-shadow: 0 0 0 5px rgb(239 90 47 / 0.12);
+  animation: rx-pulse 3s ease-in-out infinite;
 }
 
-.figure-caption {
+.rx-caption {
   position: absolute;
-  bottom: 0.35rem;
+  bottom: 0.15rem;
   left: 0;
-  color: rgb(251 250 245 / 0.58);
-  font-size: 0.5rem;
-  letter-spacing: 0.2em;
-  line-height: 1.5;
+  color: var(--ink-3);
+  font-size: 0.48rem;
+  letter-spacing: 0.18em;
+  line-height: 1.4;
 }
 
-.index-list {
-  display: grid;
-  border-top: 1px solid rgb(251 250 245 / 0.14);
+.rx-bracket {
+  position: absolute;
+  width: 17px;
+  height: 17px;
+  border-style: solid;
+  border-color: var(--signal);
+  opacity: 0.8;
 }
 
-.index-list a {
-  display: grid;
-  grid-template-columns: 1.8rem minmax(0, 1fr) auto 1rem;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.66rem 0.2rem;
-  border-bottom: 1px solid rgb(251 250 245 / 0.12);
-  transition:
-    background-color 0.2s ease,
-    padding 0.2s ease;
+.rx-bracket--tl {
+  top: 4px;
+  left: 4px;
+  border-width: 1.5px 0 0 1.5px;
 }
 
-.index-list a:hover {
-  padding-right: 0.4rem;
-  padding-left: 0.4rem;
-  background: rgb(251 250 245 / 0.06);
+.rx-bracket--tr {
+  top: 4px;
+  right: 4px;
+  border-width: 1.5px 1.5px 0 0;
 }
 
-.index-no {
-  color: var(--signal-light);
-  font-size: 0.58rem;
+.rx-bracket--bl {
+  bottom: 4px;
+  left: 4px;
+  border-width: 0 0 1.5px 1.5px;
 }
 
-.index-name {
+.rx-bracket--br {
+  right: 4px;
+  bottom: 4px;
+  border-width: 0 1.5px 1.5px 0;
+}
+
+.rx-perforation {
+  position: relative;
+  height: 30px;
+  background:
+    repeating-linear-gradient(to right, var(--signal) 0 5px, transparent 5px 10px) center / 100% 2px no-repeat,
+    var(--paper-raised);
+}
+
+.rx-perforation::before,
+.rx-perforation::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--paper);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.rx-perforation::before {
+  left: -14px;
+  clip-path: inset(0 0 0 50%);
+}
+
+.rx-perforation::after {
+  right: -14px;
+  clip-path: inset(0 50% 0 0);
+}
+
+.rx-seal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 3;
+  padding: 0.18rem 0.5rem;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-pill);
+  background: var(--paper-raised);
+  color: var(--signal-deep);
+  font-size: 0.46rem;
+  letter-spacing: 0.14em;
+  transform: translate(-50%, -50%);
+}
+
+.rx-stub {
+  padding: 0.9rem 1.05rem 0.85rem;
+  border: 2px solid var(--ink);
+  border-top: 0;
+  border-radius: 0 0 22px 22px;
+  background: var(--bottle);
+  color: var(--paper-raised);
+}
+
+.rx-stub-head {
   display: flex;
-  flex-direction: column;
-  font-size: 0.82rem;
-  line-height: 1.3;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.55rem;
+  color: rgb(251 250 245 / 0.6);
+  font-size: 0.52rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
-.index-name small {
-  color: rgb(251 250 245 / 0.64);
+.rx-list {
+  display: grid;
+  border-top: 1px dashed rgb(251 250 245 / 0.18);
+}
+
+.rx-list li {
+  border-bottom: 1px dashed rgb(251 250 245 / 0.18);
+}
+
+.rx-list a {
+  display: grid;
+  grid-template-columns: 1.55rem minmax(0, 1fr) auto 1.8rem;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.56rem 0.2rem;
+  transition:
+    padding 0.22s ease,
+    background-color 0.22s ease,
+    color 0.22s ease;
+}
+
+.rx-list a:hover {
+  padding-right: 0.55rem;
+  padding-left: 0.55rem;
+  background: var(--signal);
+  color: var(--paper-raised);
+}
+
+.rx-row-no {
+  color: var(--signal-light);
+  font-size: 0.54rem;
+}
+
+.rx-list a:hover .rx-row-no {
+  color: var(--paper-raised);
+}
+
+.rx-row-name {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.rx-row-name strong {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.rx-row-name small {
+  color: rgb(251 250 245 / 0.58);
   font-family: var(--font-mono);
-  font-size: 0.52rem;
+  font-size: 0.49rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.index-count {
-  font-family: var(--font-mono);
-  font-size: 0.9rem;
-  font-weight: 400;
+.rx-list a:hover .rx-row-name small {
+  color: rgb(251 250 245 / 0.78);
 }
 
-.index-foot {
+.rx-row-count {
+  color: var(--paper-raised);
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
+}
+
+.rx-row-arrow {
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border: 1px solid rgb(251 250 245 / 0.24);
+  border-radius: 50%;
+  transition:
+    transform 0.22s ease,
+    background-color 0.22s ease,
+    color 0.22s ease;
+}
+
+.rx-list a:hover .rx-row-arrow {
+  background: var(--paper-raised);
+  color: var(--signal-deep);
+  transform: rotate(45deg);
+}
+
+.rx-stub-foot {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-top: auto;
-  padding-top: 0.85rem;
-  color: rgb(251 250 245 / 0.68);
-  font-size: 0.58rem;
+  gap: 0.6rem;
+  padding-top: 0.7rem;
+  color: rgb(251 250 245 / 0.66);
+  font-size: 0.52rem;
 }
 
-.index-live {
+.rx-live {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.4rem;
+  white-space: nowrap;
 }
 
-.index-foot .mono {
-  letter-spacing: 0.08em;
+.rx-barcode {
+  flex: 1;
+  min-width: 34px;
+  height: 16px;
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgb(251 250 245 / 0.65) 0 1px,
+    transparent 1px 3px,
+    rgb(251 250 245 / 0.65) 3px 5px,
+    transparent 5px 7px
+  );
+  opacity: 0.55;
+}
+
+.rx-total {
+  font-size: 0.54rem;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+@keyframes rx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes rx-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 5px rgb(239 90 47 / 0.12);
+  }
+  50% {
+    box-shadow: 0 0 0 9px rgb(239 90 47 / 0.03);
+  }
 }
 
 .section-head {
@@ -697,25 +964,44 @@ function pad(value: number): string {
 
 @media (max-width: 1180px) {
   .hero {
-    grid-template-columns: minmax(0, 1fr) minmax(290px, 0.6fr);
+    grid-template-columns: minmax(330px, 0.8fr) minmax(0, 1.2fr);
+    gap: 2rem;
   }
 
   .hero-title {
     font-size: clamp(2.5rem, 5.2vw, 4.6rem);
+  }
+
+  .rx-ticket {
+    max-width: 400px;
   }
 }
 
 @media (max-width: 900px) {
   .hero {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      'main'
+      'index';
+    gap: 2.4rem;
   }
 
-  .index-card {
-    min-height: auto;
+  .rx-ticket {
+    max-width: 560px;
+    justify-self: center;
+    transform: none;
   }
 
-  .index-figure {
-    height: 140px;
+  .rx-ticket::before {
+    transform: translate(10px, 12px) rotate(1deg);
+  }
+
+  .rx-ticket:hover {
+    transform: translateY(-4px);
+  }
+
+  .rx-ticket:hover::before {
+    transform: translate(14px, 16px) rotate(1.6deg);
   }
 }
 
@@ -735,6 +1021,18 @@ function pad(value: number): string {
   .hero-title {
     font-size: clamp(2.35rem, 11vw, 3.2rem);
     letter-spacing: -0.035em;
+  }
+
+  .rx-ticket {
+    max-width: none;
+  }
+
+  .rx-ticket::before {
+    display: none;
+  }
+
+  .rx-emblem {
+    height: 170px;
   }
 
   .hero-search {

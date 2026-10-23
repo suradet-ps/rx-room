@@ -94,7 +94,8 @@ describe('homeView', () => {
     expect(wrapper.text()).toContain('ทุกเรื่อง');
     expect(wrapper.text()).toContain('จบในห้องเดียว');
     expect(wrapper.text()).toContain('Room index');
-    expect(wrapper.findAll('.index-list a')).toHaveLength(3);
+    expect(wrapper.findAll('.rx-list a')).toHaveLength(3);
+    expect(wrapper.findAll('.rx-bracket')).toHaveLength(4);
   });
 
   it('renders quick access rows from the resource catalogue', async () => {
