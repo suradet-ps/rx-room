@@ -30,17 +30,17 @@ const tabItems: Array<{ key: ViewTab; label: string; path: string }> = [
 const viewMeta: Record<ViewTab, { title: string; description: string; index: string }> = {
   tool: {
     title: 'เครื่องมือปฏิบัติงาน',
-    description: 'เครื่องมือที่ใช้ในงานประจำวันของกลุ่มงานเภสัชกรรม เปิดใช้งานได้ทันทีจากที่เดียว',
+    description: 'เครื่องมือที่ใช้ทุกวันในห้องยา',
     index: '02.1',
   },
   report: {
     title: 'รายงานและสถิติ',
-    description: 'แดชบอร์ดและรายงานสำหรับติดตามผลงาน ประชุม และสรุปข้อมูลของกลุ่มงาน',
+    description: 'รายงานและแดชบอร์ดสำหรับติดตามผล',
     index: '02.2',
   },
   external: {
     title: 'ระบบงานภายนอก',
-    description: 'ระบบของหน่วยงานภายนอกที่กลุ่มงานต้องใช้งานและส่งข้อมูลต่อ',
+    description: 'ระบบภายนอกที่ต้องใช้งานต่อ',
     index: '02.3',
   },
 };
@@ -169,7 +169,7 @@ function clearSearch() {
         Connection error
       </p>
       <h2>โหลดรายการไม่สำเร็จ</h2>
-      <p>กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่อีกครั้ง</p>
+      <p>ลองใหม่อีกครั้ง</p>
       <p class="mono state-detail">
         {{ error }}
       </p>
@@ -190,8 +190,8 @@ function clearSearch() {
       <p class="eyebrow">
         No results
       </p>
-      <h2>ไม่พบข้อมูลที่ค้นหา</h2>
-      <p>ลองเปลี่ยนคำค้นหรือเลือกแท็บอื่นเพื่อดูรายการในหมวดที่ต้องการ</p>
+      <h2>ไม่พบข้อมูล</h2>
+      <p>ลองใช้คำอื่น หรือเลือกหมวดอื่น</p>
       <button v-if="searchQuery" type="button" class="btn btn--ghost" @click="clearSearch">
         ล้างคำค้น
       </button>

@@ -4,9 +4,6 @@ import type { ResourceItem } from '@/types/resource';
 import {
   ArrowRight,
   ArrowUpRight,
-  Building2,
-  Clock3,
-  MapPin,
   Search,
 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
@@ -22,18 +19,12 @@ const { resources, loading } = useResources();
 
 const query = ref('');
 
-const todayLabel = new Intl.DateTimeFormat('th-TH', {
-  day: '2-digit',
-  month: 'short',
-  year: 'numeric',
-}).format(new Date());
-
 const yearLabel = new Intl.DateTimeFormat('th-TH', { year: 'numeric' }).format(new Date());
 
 const groups = [
-  { key: 'tool', label: 'เครื่องมือ', labelEn: 'Tools', description: 'งานประจำวันที่ใช้ทุกวัน', path: '/tools' },
-  { key: 'report', label: 'รายงาน', labelEn: 'Reports', description: 'ข้อมูลสำหรับประชุมและติดตามผล', path: '/reports' },
-  { key: 'external', label: 'ระบบภายนอก', labelEn: 'External', description: 'ปลายทางที่ต้องส่งข้อมูลต่อ', path: '/external' },
+  { key: 'tool', label: 'เครื่องมือ', labelEn: 'Tools', path: '/tools' },
+  { key: 'report', label: 'รายงาน', labelEn: 'Reports', path: '/reports' },
+  { key: 'external', label: 'ระบบภายนอก', labelEn: 'External', path: '/external' },
 ] as const;
 
 const typeLabel: Record<ResourceItem['type'], string> = {
@@ -99,8 +90,7 @@ function pad(value: number): string {
         </h1>
 
         <p class="hero-lede">
-          เครื่องมือ รายงาน และระบบภายนอกของกลุ่มงานเภสัชกรรม
-          รวมไว้ในประตูเดียว เลิกไล่หา bookmark ในวันที่ห้องยามีงานรออยู่
+          เครื่องมือและรายงานของห้องยา รวมไว้ที่เดียว
         </p>
 
         <form class="hero-search" role="search" @submit.prevent="submitSearch">
@@ -108,8 +98,8 @@ function pad(value: number): string {
           <input
             v-model="query"
             type="search"
-            placeholder="ค้นหาเครื่องมือ รายงาน หรือระบบภายนอก"
-            aria-label="ค้นหาเครื่องมือ รายงาน หรือระบบภายนอก"
+            placeholder="ค้นหาเครื่องมือและรายงาน"
+            aria-label="ค้นหาเครื่องมือและรายงาน"
             autocomplete="off"
           >
           <button type="submit" class="hero-search-submit">
@@ -143,7 +133,7 @@ function pad(value: number): string {
           <span class="figure-ring figure-ring--two" />
           <span class="figure-rx serif">Rx</span>
           <span class="figure-dot" />
-          <span class="figure-caption mono">PHARMACY<br>DEPARTMENT</span>
+          <span class="figure-caption mono">SABOT<br>ROOM 01</span>
         </div>
 
         <ul class="index-list">
@@ -164,32 +154,11 @@ function pad(value: number): string {
         </ul>
 
         <div class="index-foot">
-          <span class="index-live"><span class="status-dot status-dot--live" /> ระบบพร้อมใช้งาน</span>
+          <span class="index-live"><span class="status-dot status-dot--live" /> พร้อมใช้งาน</span>
           <span class="mono">{{ activeCount }} / {{ totalCount }}</span>
         </div>
       </aside>
     </header>
-
-    <div class="ticket rise-in" style="--delay: 240ms">
-      <div class="ticket-cell">
-        <Clock3 :size="18" :stroke-width="1.6" aria-hidden="true" />
-        <span>
-          <small>เวลาทำการ</small>
-          <strong>จ. - ศ. 08:00 - 16:00 น.</strong>
-        </span>
-      </div>
-      <div class="ticket-cell">
-        <MapPin :size="18" :stroke-width="1.6" aria-hidden="true" />
-        <span>
-          <small>ที่ตั้ง</small>
-          <strong>โรงพยาบาลสระโบสถ์</strong>
-        </span>
-      </div>
-      <div class="ticket-code" aria-hidden="true">
-        <span class="barcode" />
-        <small class="mono">RX-ROOM · 01</small>
-      </div>
-    </div>
 
     <section class="quick rise-in" style="--delay: 320ms" aria-labelledby="quick-title">
       <header class="section-head">
@@ -232,55 +201,14 @@ function pad(value: number): string {
       </ol>
 
       <p v-else class="quick-loading">
-        กำลังรวบรวมรายการจากห้องยา...
+        กำลังโหลด...
       </p>
     </section>
 
-    <section class="split rise-in" style="--delay: 400ms">
-      <article class="department-card">
-        <div class="department-copy">
-          <p class="eyebrow">
-            Department
-          </p>
-          <h2>หนึ่งห้อง หนึ่งทีม<br>ดูแลทุกงานของเภสัชกรรม</h2>
-          <p>
-            ข้อมูลหน่วยงาน เวลาทำการ ช่องทางติดต่อ และคำถามที่พบบ่อย
-            รวมอยู่ในหน้าของกลุ่มงาน
-          </p>
-          <a class="department-link" href="/department" @click.prevent="router.push('/department')">
-            ทำความรู้จักกลุ่มงาน
-            <ArrowUpRight :size="17" :stroke-width="1.8" aria-hidden="true" />
-          </a>
-        </div>
-        <div class="department-graphic" aria-hidden="true">
-          <Building2 :size="34" :stroke-width="1.2" />
-          <span class="department-rx serif">Rx</span>
-        </div>
-      </article>
-
-      <article class="stats-card">
-        <header class="stats-head">
-          <p class="eyebrow">
-            Room status
-          </p>
-          <span class="mono">{{ todayLabel }}</span>
-        </header>
-        <dl class="stats-grid">
-          <div v-for="group in groups" :key="group.key">
-            <dt>{{ group.label }}</dt>
-            <dd>{{ loading ? '...' : pad(counts[group.key]) }}</dd>
-          </div>
-          <div>
-            <dt>พร้อมใช้งาน</dt>
-            <dd>{{ loading ? '...' : pad(activeCount) }}</dd>
-          </div>
-        </dl>
-        <p class="stats-foot mono">
-          <span class="status-dot status-dot--live" />
-          ทุกระบบเชื่อมต่อจากประตูเดียว
-        </p>
-      </article>
-    </section>
+    <footer class="home-foot rise-in" style="--delay: 400ms">
+      <span class="mono">Rx Room · 01</span>
+      <span class="mono">{{ yearLabel }} · Sabot Hospital</span>
+    </footer>
   </div>
 </template>
 
@@ -628,97 +556,6 @@ function pad(value: number): string {
   letter-spacing: 0.08em;
 }
 
-.ticket {
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
-  gap: 1rem;
-  padding: 0.9rem 1.2rem;
-  border-top: 1px dashed var(--line-strong);
-  border-bottom: 1px dashed var(--line-strong);
-  background: rgb(251 250 245 / 0.5);
-}
-
-.ticket::before,
-.ticket::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  width: 14px;
-  height: 14px;
-  border: 1px solid var(--line-strong);
-  border-radius: 50%;
-  background: var(--paper);
-  transform: translateY(-50%);
-}
-
-.ticket::before {
-  left: -8px;
-}
-
-.ticket::after {
-  right: -8px;
-}
-
-.ticket-cell {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  color: var(--ink-2);
-}
-
-.ticket-cell svg {
-  color: var(--signal-deep);
-}
-
-.ticket-cell span {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.3;
-}
-
-.ticket-cell small {
-  color: var(--ink-3);
-  font-family: var(--font-mono);
-  font-size: 0.54rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.ticket-cell strong {
-  font-size: 0.78rem;
-  font-weight: 500;
-}
-
-.ticket-code {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  padding-left: 1rem;
-  border-left: 1px solid var(--line);
-}
-
-.ticket-code small {
-  color: var(--ink-3);
-  font-size: 0.52rem;
-  letter-spacing: 0.1em;
-}
-
-.barcode {
-  width: 58px;
-  height: 20px;
-  background-image: repeating-linear-gradient(
-    90deg,
-    var(--ink) 0 1px,
-    transparent 1px 3px,
-    var(--ink) 3px 5px,
-    transparent 5px 6px,
-    var(--ink) 6px 7px,
-    transparent 7px 10px
-  );
-  opacity: 0.72;
-}
-
 .section-head {
   display: flex;
   align-items: flex-end;
@@ -846,153 +683,16 @@ function pad(value: number): string {
   font-size: 0.84rem;
 }
 
-.split {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
-  gap: clamp(1rem, 2vw, 1.5rem);
-}
-
-.department-card {
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
-  min-height: 260px;
-  padding: clamp(1.3rem, 2.4vw, 2rem);
-  overflow: hidden;
-  border-radius: var(--radius-sm);
-  background: var(--mint);
-  color: var(--ink);
-}
-
-.department-copy {
-  position: relative;
-  z-index: 1;
-  max-width: 36rem;
-}
-
-.department-copy h2 {
-  margin-top: 0.6rem;
-  font-size: clamp(1.35rem, 2.2vw, 2rem);
-}
-
-.department-copy p:not(.eyebrow) {
-  max-width: 40ch;
-  margin-top: 0.7rem;
-  color: var(--ink-2);
-  font-size: 0.82rem;
-  line-height: 1.7;
-}
-
-.department-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  margin-top: 1.1rem;
-  padding-bottom: 0.2rem;
-  border-bottom: 1px solid var(--ink);
-  font-size: 0.74rem;
-  font-weight: 500;
-  transition:
-    gap 0.2s ease,
-    color 0.2s ease;
-}
-
-.department-link:hover {
-  gap: 0.65rem;
-  color: var(--signal-deep);
-}
-
-.department-graphic {
-  position: relative;
-  display: grid;
-  flex-shrink: 0;
-  place-items: center;
-  width: 9rem;
-  height: 9rem;
-  color: var(--bottle);
-}
-
-.department-graphic::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border: 1px solid rgb(13 59 49 / 0.18);
-  border-radius: 50%;
-}
-
-.department-graphic::after {
-  content: '';
-  position: absolute;
-  inset: 1.1rem;
-  border: 1px dashed rgb(13 59 49 / 0.22);
-  border-radius: 50%;
-}
-
-.department-rx {
-  font-size: 2.9rem;
-  font-style: italic;
-  line-height: 1;
-}
-
-.stats-card {
-  display: flex;
-  flex-direction: column;
-  padding: clamp(1.2rem, 2vw, 1.6rem);
-  border: 1px solid var(--ink);
-  border-radius: var(--radius-sm);
-  background: var(--paper-raised);
-}
-
-.stats-head {
+.home-foot {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-}
-
-.stats-head .mono {
-  color: var(--ink-3);
-  font-size: 0.54rem;
-  letter-spacing: 0.08em;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin-top: 0.9rem;
+  padding-top: 1.1rem;
   border-top: 1px solid var(--line);
-  border-left: 1px solid var(--line);
-}
-
-.stats-grid div {
-  padding: 0.8rem 0.85rem;
-  border-right: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-}
-
-.stats-grid dt {
   color: var(--ink-3);
-  font-size: 0.62rem;
-}
-
-.stats-grid dd {
-  margin-top: 0.15rem;
-  font-family: var(--font-mono);
-  font-size: clamp(1.5rem, 2.2vw, 2rem);
-  line-height: 1;
-}
-
-.stats-foot {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: auto;
-  padding-top: 1rem;
-  color: var(--ink-3);
-  font-size: 0.56rem;
-  letter-spacing: 0.05em;
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
 }
 
 @media (max-width: 1180px) {
@@ -1016,14 +716,6 @@ function pad(value: number): string {
 
   .index-figure {
     height: 140px;
-  }
-
-  .split {
-    grid-template-columns: 1fr;
-  }
-
-  .department-card {
-    min-height: 230px;
   }
 }
 
@@ -1065,18 +757,6 @@ function pad(value: number): string {
     justify-content: center;
   }
 
-  .ticket {
-    grid-template-columns: 1fr;
-    gap: 0.7rem;
-    padding: 1rem 1.1rem;
-  }
-
-  .ticket-code {
-    padding: 0.6rem 0 0;
-    border-top: 1px dashed var(--line-strong);
-    border-left: 0;
-  }
-
   .quick-row {
     grid-template-columns: 1.8rem 2.4rem minmax(0, 1fr) 2rem;
     gap: 0.65rem;
@@ -1091,12 +771,10 @@ function pad(value: number): string {
     height: 2.4rem;
   }
 
-  .department-graphic {
-    display: none;
-  }
-
-  .stats-grid dd {
-    font-size: 1.6rem;
+  .home-foot {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.22rem;
   }
 }
 </style>

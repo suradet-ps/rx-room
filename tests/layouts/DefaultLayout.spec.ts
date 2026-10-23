@@ -35,11 +35,9 @@ describe('defaultLayout', () => {
       },
     });
 
-    expect(wrapper.findAll('.nav-item')).toHaveLength(3);
-    expect(wrapper.findAll('.mobile-nav-item')).toHaveLength(4);
-    expect(wrapper.text()).toContain('ภาพรวม');
-    expect(wrapper.text()).toContain('เครื่องมือ');
-    expect(wrapper.text()).toContain('กลุ่มงาน');
+    expect(wrapper.findAll('.nav-item')).toHaveLength(2);
+    expect(wrapper.findAll('.mobile-nav-item')).toHaveLength(3);
+    expect(wrapper.findAll('.nav-item .nav-copy strong').map(item => item.text())).toEqual(['ภาพรวม', 'เครื่องมือ']);
     expect(wrapper.find('.test-content').exists()).toBe(true);
     expect(wrapper.text()).toContain('Content');
   });

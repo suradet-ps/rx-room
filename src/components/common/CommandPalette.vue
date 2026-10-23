@@ -4,7 +4,6 @@ import type { ResourceItem } from '@/types/resource';
 
 import {
   BarChart3,
-  Building2,
   CornerDownLeft,
   ExternalLink,
   House,
@@ -50,7 +49,6 @@ const pages: PaletteItem[] = [
   { id: 'page-tools', label: 'เครื่องมือทั้งหมด', meta: 'หน้า', kind: 'page', icon: Wrench, path: '/tools', keywords: 'tools' },
   { id: 'page-reports', label: 'รายงานและสถิติ', meta: 'หน้า', kind: 'page', icon: BarChart3, path: '/reports', keywords: 'reports dashboard' },
   { id: 'page-external', label: 'ระบบงานภายนอก', meta: 'หน้า', kind: 'page', icon: ExternalLink, path: '/external', keywords: 'external' },
-  { id: 'page-department', label: 'กลุ่มงานเภสัชกรรม', meta: 'หน้า', kind: 'page', icon: Building2, path: '/department', keywords: 'department contact' },
 ];
 
 const typeLabel: Record<ResourceItem['type'], string> = {

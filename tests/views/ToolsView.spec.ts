@@ -108,6 +108,6 @@ describe('toolsView', () => {
     store.setSearch('ไม่พบแน่นอน');
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.text()).toContain('ไม่พบข้อมูลที่ค้นหา');
+    expect(wrapper.text()).toContain('ไม่พบข้อมูล');
   });
 });

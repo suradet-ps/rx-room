@@ -2,7 +2,6 @@
 import type { Component } from 'vue';
 
 import {
-  Building2,
   House,
   Search,
   Wrench,
@@ -16,19 +15,17 @@ const router = useRouter();
 const route = useRoute();
 
 type NavItem = {
-  key: 'home' | 'tools' | 'department';
+  key: 'home' | 'tools';
   index: string;
   label: string;
   labelEn: string;
   icon: Component;
-  path: '/' | '/tools' | '/department';
-  group?: 'home' | 'department' | 'tools';
+  path: '/' | '/tools';
 };
 
 const navItems: NavItem[] = [
-  { key: 'home', index: '01', label: 'ภาพรวม', labelEn: 'Overview', icon: House, path: '/', group: 'home' },
-  { key: 'tools', index: '02', label: 'เครื่องมือ', labelEn: 'Tools & reports', icon: Wrench, path: '/tools', group: 'tools' },
-  { key: 'department', index: '03', label: 'กลุ่มงาน', labelEn: 'Department', icon: Building2, path: '/department', group: 'department' },
+  { key: 'home', index: '01', label: 'ภาพรวม', labelEn: 'Overview', icon: House, path: '/' },
+  { key: 'tools', index: '02', label: 'เครื่องมือ', labelEn: 'Tools & reports', icon: Wrench, path: '/tools' },
 ];
 
 const paletteOpen = ref(false);
@@ -40,9 +37,6 @@ const today = new Intl.DateTimeFormat('th-TH', {
 }).format(new Date());
 
 const pageContext = computed(() => {
-  if (route.path === '/department')
-    return { index: '03', title: 'กลุ่มงานเภสัชกรรม' };
-
   if (route.path === '/reports')
     return { index: '02', title: 'รายงานและสถิติ' };
 
@@ -56,10 +50,10 @@ const pageContext = computed(() => {
 });
 
 function isActive(item: NavItem): boolean {
-  if (item.group === 'tools')
+  if (item.key === 'tools')
     return route.path === '/tools' || route.path === '/reports' || route.path === '/external' || route.meta.navGroup === 'tools';
 
-  return route.path === item.path || route.meta.navGroup === item.group;
+  return route.path === '/';
 }
 
 function navigateTo(path: string) {
@@ -146,17 +140,6 @@ onBeforeUnmount(() => {
       </nav>
 
       <div class="rail-foot">
-        <div class="room-state">
-          <span class="status-dot status-dot--live status-dot--pulse" aria-hidden="true" />
-          <span>
-            <strong>เปิดทำการ</strong>
-            <small>จ. - ศ. 08:00 - 16:00 น.</small>
-          </span>
-        </div>
-        <a class="rail-contact" href="/department" @click.prevent="navigateTo('/department')">
-          ติดต่อกลุ่มงาน
-          <span aria-hidden="true">↗</span>
-        </a>
         <p class="rail-version">
           Rx Room · v0.1
         </p>
@@ -431,57 +414,8 @@ kbd {
 }
 
 .rail-foot {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
   margin-top: auto;
   padding: 0 0.15rem;
-}
-
-.room-state {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  padding: 0.8rem 0.75rem;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-xs);
-  background: var(--mint-soft);
-}
-
-.room-state span:last-child {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.3;
-}
-
-.room-state strong {
-  font-size: 0.76rem;
-  font-weight: 600;
-}
-
-.room-state small {
-  margin-top: 0.08rem;
-  color: var(--ink-3);
-  font-size: 0.64rem;
-}
-
-.rail-contact {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 0.2rem;
-  color: var(--ink-2);
-  font-size: 0.74rem;
-  font-weight: 500;
-  transition: color 0.2s ease;
-}
-
-.rail-contact:hover {
-  color: var(--signal-deep);
-}
-
-.rail-contact span {
-  font-size: 0.9rem;
 }
 
 .rail-version {
@@ -626,7 +560,7 @@ kbd {
     left: 0.75rem;
     z-index: 45;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     overflow: hidden;
     border: 1px solid var(--ink);
     border-radius: var(--radius-sm);

@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useUIStore } from '@/stores/ui';
 
-import DepartmentView from '@/views/DepartmentView.vue';
 import HomeView from '@/views/HomeView.vue';
 import NotFoundView from '@/views/NotFoundView.vue';
 import ToolsView from '@/views/ToolsView.vue';
@@ -32,12 +31,6 @@ const router = createRouter({
       name: 'external',
       component: ToolsView,
       meta: { tab: 'external', navGroup: 'tools' },
-    },
-    {
-      path: '/department',
-      name: 'department',
-      component: DepartmentView,
-      meta: { navGroup: 'department' },
     },
     {
       path: '/:pathMatch(.*)*',
