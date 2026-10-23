@@ -1,1129 +1,1102 @@
 <script setup lang="ts">
-import { onBeforeUnmount } from 'vue';
+import type { ResourceItem } from '@/types/resource';
 
-const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
+import {
+  ArrowRight,
+  ArrowUpRight,
+  Building2,
+  Clock3,
+  MapPin,
+  Search,
+} from 'lucide-vue-next';
+import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
 
-const HERO_PHOTO_SRC = '/images/home-hero.jpg';
+import ResourceIcon from '@/components/common/ResourceIcon.vue';
+import { useResources } from '@/composables/use-resources';
+import { useUIStore } from '@/stores/ui';
 
-let observer: IntersectionObserver | null = null;
-let hoveredTile: HTMLElement | null = null;
+const router = useRouter();
+const store = useUIStore();
+const { resources, loading } = useResources();
 
-function clearTilt(tile: HTMLElement | null) {
-  if (!tile)
-    return;
-  tile.style.setProperty('--tilt-x', '0deg');
-  tile.style.setProperty('--tilt-y', '0deg');
-}
+const query = ref('');
 
-function onGridPointerMove(event: PointerEvent) {
-  if (event.pointerType !== 'mouse')
-    return;
+const todayLabel = new Intl.DateTimeFormat('th-TH', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+}).format(new Date());
 
-  const tile = (event.target as HTMLElement).closest<HTMLElement>('.hover-shrink');
-  if (tile !== hoveredTile) {
-    clearTilt(hoveredTile);
-    hoveredTile = tile;
-  }
-  if (!tile)
-    return;
+const yearLabel = new Intl.DateTimeFormat('th-TH', { year: 'numeric' }).format(new Date());
 
-  const rect = tile.getBoundingClientRect();
-  const x = (event.clientX - rect.left) / rect.width - 0.5;
-  const y = (event.clientY - rect.top) / rect.height - 0.5;
-  tile.style.setProperty('--tilt-x', `${(-y * 2.6).toFixed(2)}deg`);
-  tile.style.setProperty('--tilt-y', `${(x * 2.6).toFixed(2)}deg`);
-}
+const groups = [
+  { key: 'tool', label: 'เครื่องมือ', labelEn: 'Tools', description: 'งานประจำวันที่ใช้ทุกวัน', path: '/tools' },
+  { key: 'report', label: 'รายงาน', labelEn: 'Reports', description: 'ข้อมูลสำหรับประชุมและติดตามผล', path: '/reports' },
+  { key: 'external', label: 'ระบบภายนอก', labelEn: 'External', description: 'ปลายทางที่ต้องส่งข้อมูลต่อ', path: '/external' },
+] as const;
 
-function onGridPointerLeave() {
-  clearTilt(hoveredTile);
-  hoveredTile = null;
-}
-
-function onPhotoError(event: Event) {
-  (event.target as HTMLImageElement).style.display = 'none';
-}
-
-const vRevealGroup = {
-  mounted(container: HTMLElement) {
-    const reducedMotion
-      = typeof window.matchMedia === 'function'
-        && window.matchMedia(REDUCED_MOTION).matches;
-
-    if (reducedMotion || typeof IntersectionObserver === 'undefined')
-      return;
-
-    const tiles = Array.from(container.children) as HTMLElement[];
-    if (!tiles.length)
-      return;
-
-    tiles.forEach((tile, index) => {
-      tile.style.setProperty('--tile-order', String(index));
-      tile.classList.add('tile-pending');
-    });
-
-    observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting)
-            continue;
-          entry.target.classList.remove('tile-pending');
-          entry.target.classList.add('tile-shown');
-          observer?.unobserve(entry.target);
-        }
-      },
-      { threshold: 0.12 },
-    );
-
-    tiles.forEach(tile => observer?.observe(tile));
-  },
+const typeLabel: Record<ResourceItem['type'], string> = {
+  tool: 'TOOL',
+  report: 'REPORT',
+  external: 'EXTERNAL',
 };
 
-onBeforeUnmount(() => observer?.disconnect());
+const counts = computed(() => ({
+  tool: resources.value.filter(item => item.type === 'tool').length,
+  report: resources.value.filter(item => item.type === 'report').length,
+  external: resources.value.filter(item => item.type === 'external').length,
+}));
+
+const totalCount = computed(() => resources.value.length);
+const activeCount = computed(() => resources.value.filter(item => item.isActive).length);
+
+const featuredIds = ['med-safety', 'warfarin-calc', 'hospital-drugs', 'had-list'];
+
+const featured = computed(() => {
+  const byId = new Map(resources.value.map(item => [item.id, item]));
+  const preferred = featuredIds
+    .map(id => byId.get(id))
+    .filter((item): item is ResourceItem => Boolean(item));
+
+  if (preferred.length >= 4)
+    return preferred;
+
+  const rest = resources.value.filter(item => item.isActive && !featuredIds.includes(item.id));
+  return [...preferred, ...rest].slice(0, 4);
+});
+
+const suggestions = ['Warfarin', 'MedSafety', 'บัญชียา'];
+
+function submitSearch() {
+  store.setSearch(query.value.trim());
+  void router.push('/tools');
+}
+
+function searchFor(term: string) {
+  query.value = term;
+  submitSearch();
+}
+
+function pad(value: number): string {
+  return String(value).padStart(2, '0');
+}
 </script>
 
 <template>
-  <div class="home-view">
-    <article
-      id="inicio"
-      v-reveal-group
-      class="inicio-container"
-      @pointermove="onGridPointerMove"
-      @pointerleave="onGridPointerLeave"
-    >
-      <section class="chicken-container hover-shrink">
-        <div class="mock-visual mock-visual--hero" aria-label="ภาพบรรยากาศกลุ่มงานเภสัชกรรม">
-          <img
-            class="tile-photo"
-            :src="HERO_PHOTO_SRC"
-            alt="ภาพบรรยากาศกลุ่มงานเภสัชกรรม โรงพยาบาลสระโบสถ์"
-            decoding="async"
-            @error="onPhotoError"
+  <div class="home">
+    <header class="hero">
+      <div class="hero-main rise-in" style="--delay: 40ms">
+        <div class="hero-kicker">
+          <span class="eyebrow"><span class="status-dot status-dot--live status-dot--pulse" /> Internal toolkit</span>
+          <span class="hero-edition mono">ROOM 01 / SABOT</span>
+        </div>
+
+        <h1 class="hero-title">
+          ทุกเรื่อง<br>
+          <span class="hero-soft">ของห้องยา</span><br>
+          <span class="hero-strong">จบในห้องเดียว<i>.</i></span>
+        </h1>
+
+        <p class="hero-lede">
+          เครื่องมือ รายงาน และระบบภายนอกของกลุ่มงานเภสัชกรรม
+          รวมไว้ในประตูเดียว เลิกไล่หา bookmark ในวันที่ห้องยามีงานรออยู่
+        </p>
+
+        <form class="hero-search" role="search" @submit.prevent="submitSearch">
+          <Search class="hero-search-icon" :size="21" :stroke-width="1.7" aria-hidden="true" />
+          <input
+            v-model="query"
+            type="search"
+            placeholder="ค้นหาเครื่องมือ รายงาน หรือระบบภายนอก"
+            aria-label="ค้นหาเครื่องมือ รายงาน หรือระบบภายนอก"
+            autocomplete="off"
           >
-        </div>
-      </section>
+          <button type="submit" class="hero-search-submit">
+            ค้นหา
+            <ArrowRight :size="17" :stroke-width="1.9" aria-hidden="true" />
+          </button>
+        </form>
 
-      <section class="marca flex-center hover-shrink">
-        <div class="brand-mark" aria-hidden="true">
-          <span class="brand-dot" />
-          <span class="brand-dot brand-dot--small" />
-          <span class="brand-line" />
-        </div>
-        <p>RX ROOM</p>
-      </section>
-
-      <section class="papas-container hover-shrink">
-        <div class="mock-visual mock-visual--vertical" aria-hidden="true">
-          <div class="pharmacy-icon pharmacy-icon--tablet">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="4" y="6" width="16" height="12" rx="3" />
-              <path d="M8 12h8" />
-            </svg>
-          </div>
-          <div class="pharmacy-icon pharmacy-icon--leaf">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 22c5-5 8-10 8-16C20 4 16 2 12 2 4 4 2 10 4 16c2-6 8-6 8 6z" />
-              <path d="M12 22c-2 0-5-3-5-8" />
-              <path d="M9 14c1-2 3-4 6-4" />
-            </svg>
-          </div>
-          <div class="pharmacy-icon pharmacy-icon--bottle">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M9 3h6v3l2 2v12a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V8l2-2z" />
-              <path d="M9 3V2a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1" />
-              <path d="M12 11v4" />
-              <path d="M10 13h4" />
-            </svg>
-          </div>
-          <div class="pharmacy-icon pharmacy-icon--clipboard">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="4" y="4" width="16" height="18" rx="2" />
-              <path d="M8 2v4" />
-              <path d="M16 2v4" />
-              <path d="M8 10h8" />
-              <path d="M8 14h4" />
-              <path d="M8 18h2" />
-            </svg>
-          </div>
-        </div>
-      </section>
-
-      <section class="logo flex-center hover-shrink">
-        <div class="logo-badge" aria-hidden="true">
-          <svg class="shield-logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 2L4 5V11C4 16.5 12 21 12 21C12 21 20 16.5 20 11V5L12 2Z" stroke="#F97316" stroke-width="1.8" stroke-linejoin="round" />
-            <rect x="8" y="9" width="3.5" height="4" rx="1.8" fill="#F97316" />
-            <rect x="12.5" y="9" width="3.5" height="4" rx="1.8" fill="#F97316" />
-          </svg>
-        </div>
-      </section>
-
-      <section class="title hover-shrink">
-        <div class="title-content">
-          <h1>RX ROOM</h1>
-          <p>ศูนย์รวมระบบงาน <span>กลุ่มงานเภสัชกรรม โรงพยาบาลสระโบสถ์</span></p>
-          <div class="title-meta" role="list" aria-label="ภาพรวมทรัพยากร">
-            <span role="listitem">เครื่องมือ 9</span>
-            <span role="listitem">รายงาน 5</span>
-            <span role="listitem">เชื่อมต่อภายนอก 1</span>
-          </div>
-        </div>
-      </section>
-
-      <section class="gif-brasas hover-shrink">
-        <div class="mock-video" aria-label="พื้นที่โมชั่นตัวอย่าง">
-          <span class="signal signal--one" />
-          <span class="signal signal--two" />
-          <span class="signal signal--three" />
-          <p>Dashboard Motion</p>
-        </div>
-      </section>
-
-      <section class="img-alitas hover-shrink">
-        <div class="mock-visual mock-visual--secondary" aria-label="พื้นที่วิดีโอ">
-          <video
-            class="pharmacy-video"
-            autoplay
-            loop
-            muted
-            playsinline
+        <div class="hero-suggest">
+          <span class="hero-suggest-label">ลองค้น</span>
+          <button
+            v-for="term in suggestions"
+            :key="term"
+            type="button"
+            class="hero-suggest-chip"
+            @click="searchFor(term)"
           >
-            <source src="/video/pharmacy.webm" type="video/webm">
-          </video>
+            {{ term }}
+          </button>
         </div>
-      </section>
+      </div>
 
-      <section class="action-link hover-shrink">
-        <a href="/tools" class="animated-link" aria-label="ไปยังหน้ารวมเครื่องมือ">
-          <span class="text">ดูเครื่องมือทั้งหมด</span>
-          <svg viewBox="0 0 24 24" class="cta-arrow" aria-hidden="true">
-            <path d="M16.1716 10.9999L10.8076 5.63589L12.2218 4.22168L20 11.9999L12.2218 19.778L10.8076 18.3638L16.1716 12.9999H4V10.9999H16.1716Z" />
-          </svg>
+      <aside class="index-card rise-in" style="--delay: 150ms" aria-label="สารบัญห้องยา">
+        <div class="index-top">
+          <span>Room index</span>
+          <span>{{ yearLabel }}</span>
+        </div>
+
+        <div class="index-figure" aria-hidden="true">
+          <span class="figure-ring figure-ring--one" />
+          <span class="figure-ring figure-ring--two" />
+          <span class="figure-rx serif">Rx</span>
+          <span class="figure-dot" />
+          <span class="figure-caption mono">PHARMACY<br>DEPARTMENT</span>
+        </div>
+
+        <ul class="index-list">
+          <li v-for="(group, index) in groups" :key="group.key">
+            <a :href="group.path" @click.prevent="router.push(group.path)">
+              <span class="index-no mono">{{ pad(index + 1) }}</span>
+              <span class="index-name">
+                {{ group.label }}
+                <small>{{ group.labelEn }}</small>
+              </span>
+              <strong class="index-count">
+                <template v-if="loading">...</template>
+                <template v-else>{{ pad(counts[group.key]) }}</template>
+              </strong>
+              <ArrowUpRight :size="15" :stroke-width="1.8" aria-hidden="true" />
+            </a>
+          </li>
+        </ul>
+
+        <div class="index-foot">
+          <span class="index-live"><span class="status-dot status-dot--live" /> ระบบพร้อมใช้งาน</span>
+          <span class="mono">{{ activeCount }} / {{ totalCount }}</span>
+        </div>
+      </aside>
+    </header>
+
+    <div class="ticket rise-in" style="--delay: 240ms">
+      <div class="ticket-cell">
+        <Clock3 :size="18" :stroke-width="1.6" aria-hidden="true" />
+        <span>
+          <small>เวลาทำการ</small>
+          <strong>จ. - ศ. 08:00 - 16:00 น.</strong>
+        </span>
+      </div>
+      <div class="ticket-cell">
+        <MapPin :size="18" :stroke-width="1.6" aria-hidden="true" />
+        <span>
+          <small>ที่ตั้ง</small>
+          <strong>โรงพยาบาลสระโบสถ์</strong>
+        </span>
+      </div>
+      <div class="ticket-code" aria-hidden="true">
+        <span class="barcode" />
+        <small class="mono">RX-ROOM · 01</small>
+      </div>
+    </div>
+
+    <section class="quick rise-in" style="--delay: 320ms" aria-labelledby="quick-title">
+      <header class="section-head">
+        <div>
+          <p class="eyebrow">
+            Quick access
+          </p>
+          <h2 id="quick-title">
+            เข้าใช้งานบ่อย
+          </h2>
+        </div>
+        <a class="section-link" href="/tools" @click.prevent="router.push('/tools')">
+          ดูทั้งหมด
+          <ArrowRight :size="16" :stroke-width="1.8" aria-hidden="true" />
         </a>
-      </section>
-    </article>
+      </header>
+
+      <ol v-if="featured.length" class="quick-list">
+        <li v-for="(item, index) in featured" :key="item.id">
+          <a
+            class="quick-row"
+            :href="item.url"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <span class="quick-no mono">{{ pad(index + 1) }}</span>
+            <span class="quick-icon">
+              <ResourceIcon :name="item.iconName" :size="21" :stroke-width="1.6" />
+            </span>
+            <span class="quick-copy">
+              <strong>{{ item.title }}</strong>
+              <small>{{ item.description }}</small>
+            </span>
+            <span class="quick-tag mono">{{ typeLabel[item.type] }}</span>
+            <span class="quick-arrow" aria-hidden="true">
+              <ArrowUpRight :size="18" :stroke-width="1.7" />
+            </span>
+          </a>
+        </li>
+      </ol>
+
+      <p v-else class="quick-loading">
+        กำลังรวบรวมรายการจากห้องยา...
+      </p>
+    </section>
+
+    <section class="split rise-in" style="--delay: 400ms">
+      <article class="department-card">
+        <div class="department-copy">
+          <p class="eyebrow">
+            Department
+          </p>
+          <h2>หนึ่งห้อง หนึ่งทีม<br>ดูแลทุกงานของเภสัชกรรม</h2>
+          <p>
+            ข้อมูลหน่วยงาน เวลาทำการ ช่องทางติดต่อ และคำถามที่พบบ่อย
+            รวมอยู่ในหน้าของกลุ่มงาน
+          </p>
+          <a class="department-link" href="/department" @click.prevent="router.push('/department')">
+            ทำความรู้จักกลุ่มงาน
+            <ArrowUpRight :size="17" :stroke-width="1.8" aria-hidden="true" />
+          </a>
+        </div>
+        <div class="department-graphic" aria-hidden="true">
+          <Building2 :size="34" :stroke-width="1.2" />
+          <span class="department-rx serif">Rx</span>
+        </div>
+      </article>
+
+      <article class="stats-card">
+        <header class="stats-head">
+          <p class="eyebrow">
+            Room status
+          </p>
+          <span class="mono">{{ todayLabel }}</span>
+        </header>
+        <dl class="stats-grid">
+          <div v-for="group in groups" :key="group.key">
+            <dt>{{ group.label }}</dt>
+            <dd>{{ loading ? '...' : pad(counts[group.key]) }}</dd>
+          </div>
+          <div>
+            <dt>พร้อมใช้งาน</dt>
+            <dd>{{ loading ? '...' : pad(activeCount) }}</dd>
+          </div>
+        </dl>
+        <p class="stats-foot mono">
+          <span class="status-dot status-dot--live" />
+          ทุกระบบเชื่อมต่อจากประตูเดียว
+        </p>
+      </article>
+    </section>
   </div>
 </template>
 
 <style scoped>
-.home-view {
-  position: relative;
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(2rem, 4vw, 3.4rem);
+  width: min(100%, 1460px);
+  margin: 0 auto;
+  padding: clamp(1.5rem, 3vw, 3rem) clamp(1rem, 3.6vw, 3.25rem) 4.5rem;
 }
 
-/* Subtle film-grain overlay to reduce banding and add texture */
-.home-view::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 6;
-  pointer-events: none;
-  opacity: 0.05;
-  mix-blend-mode: soft-light;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-
-.inicio-container {
-  --tile-border: rgba(255, 255, 255, 0.16);
-  --tile-blur: 8px;
-  position: relative;
-  isolation: isolate;
+.hero {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  grid-template-rows: repeat(3, 1fr);
-  gap: 12px;
-  height: calc(100vh - 90px);
-  padding: 12px 10%;
-  animation: fadeIn 0.8s ease-in-out;
+  grid-template-columns: minmax(0, 1.32fr) minmax(320px, 0.68fr);
+  align-items: stretch;
+  gap: clamp(1.25rem, 2.8vw, 2.5rem);
 }
 
-.flex-center {
+.hero-main {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: clamp(0.5rem, 1.4vw, 1.5rem) 0;
+}
+
+.hero-kicker {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: clamp(1.2rem, 2.5vw, 2rem);
 }
 
-.hover-shrink,
-.mock-visual,
-.mock-video,
-.logo-badge,
-.brand-mark {
-  transition: transform 0.3s ease;
+.hero-kicker .eyebrow {
+  gap: 0.55rem;
 }
 
-.hover-shrink:hover {
-  transform: scale(0.97);
+.hero-kicker .eyebrow::before {
+  display: none;
 }
 
-/* ── Pointer tilt ── */
-.hover-shrink {
-  transform: perspective(1200px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) scale(var(--tile-scale, 1));
-  transition: transform 0.25s ease-out;
-  will-change: transform;
+.hero-edition {
+  color: var(--ink-3);
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
 }
 
-@media (hover: hover) {
-  .hover-shrink:hover {
-    --tile-scale: 0.975;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hover-shrink {
-    transform: none;
-  }
-}
-
-/* ── Staggered entrance reveal ── */
-.inicio-container > section {
-  transition:
-    opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
-    translate 0.55s cubic-bezier(0.22, 1, 0.36, 1);
-  transition-delay: calc(min(var(--tile-order, 0), 4) * 70ms);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .inicio-container > section.tile-pending {
-    opacity: 0;
-    translate: 0 24px;
-  }
-}
-
-.chicken-container,
-.img-alitas,
-.papas-container,
-.gif-brasas,
-.title,
-.action-link,
-.marca,
-.logo {
-  position: relative;
-  z-index: 1;
-  border-radius: 20px;
-  overflow: hidden;
-  border: 1px solid var(--tile-border);
-  background: transparent;
-  box-shadow: 0 10px 22px rgb(14 8 27 / 0.06);
-}
-
-.chicken-container::before,
-.img-alitas::before,
-.papas-container::before,
-.gif-brasas::before,
-.title::before,
-.action-link::before,
-.marca::before,
-.logo::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  background-image: url('/images/home.png');
-  background-repeat: no-repeat;
-  background-size: var(--tile-bg-size, cover);
-  background-position: var(--tile-bg-position, center);
-  filter: saturate(1.02) brightness(1.04);
-}
-
-.chicken-container::after,
-.img-alitas::after,
-.papas-container::after,
-.gif-brasas::after,
-.title::after,
-.action-link::after,
-.marca::after,
-.logo::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  background: linear-gradient(145deg, rgb(255 255 255 / 0.03), rgb(255 255 255 / 0.008));
-  backdrop-filter: blur(var(--tile-blur)) saturate(108%);
-  -webkit-backdrop-filter: blur(var(--tile-blur)) saturate(108%);
-}
-
-.chicken-container > *,
-.img-alitas > *,
-.papas-container > *,
-.gif-brasas > *,
-.title > *,
-.action-link > *,
-.marca > *,
-.logo > * {
-  position: relative;
-  z-index: 1;
-}
-
-.chicken-container {
-  --tile-bg-size: 700% 300%;
-  --tile-bg-position: 0% 0%;
-  grid-column: span 3 / span 3;
-}
-
-.marca {
-  --tile-bg-size: 350% 300%;
-  --tile-bg-position: 16.7% 0%;
-}
-
-.papas-container {
-  --tile-bg-size: 350% 100%;
-  --tile-bg-position: 100% 0%;
-}
-
-.logo {
-  --tile-bg-size: 700% 300%;
-  --tile-bg-position: 0% 50%;
-}
-
-.title {
-  --tile-bg-size: 175% 300%;
-  --tile-bg-position: 16.7% 50%;
-}
-
-.gif-brasas {
-  --tile-bg-size: 700% 300%;
-  --tile-bg-position: 0% 100%;
-}
-
-.img-alitas {
-  --tile-bg-size: 350% 300%;
-  --tile-bg-position: 16.7% 100%;
-}
-
-.action-link {
-  --tile-bg-size: 350% 300%;
-  --tile-bg-position: 50% 100%;
-}
-
-.chicken-container,
-.img-alitas {
-  transition: transform 0.3s ease;
-}
-
-.mock-visual,
-.mock-video {
-  width: 100%;
-  height: 100%;
-  min-height: 100%;
-  position: relative;
-  background-color: transparent;
-  z-index: 1;
-}
-
-.chicken-container .mock-visual,
-.img-alitas .mock-visual,
-.img-alitas .mock-visual {
-  border-radius: 20px;
-  height: 100%;
-  min-height: 100%;
-}
-
-.mock-visual::before,
-.mock-video::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at top left, rgb(255 255 255 / 0.05), transparent 28%),
-    linear-gradient(135deg, rgb(255 255 255 / 0.02), transparent 50%);
-  pointer-events: none;
-}
-
-.mock-visual--hero {
-  background:
-    linear-gradient(140deg, rgb(255 255 255 / 0.005), rgb(23 198 210 / 0.025)),
-    linear-gradient(135deg, rgb(255 243 234 / 0.03) 0%, rgb(248 223 206 / 0.015) 35%, rgb(23 198 210 / 0.025) 100%);
-  min-height: 100%;
-}
-
-.tile-photo {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.marca {
-  grid-column: span 2 / span 2;
-  flex-wrap: wrap;
-  flex-direction: row;
-  gap: 20px;
-  padding: 20px 6%;
-}
-
-.brand-mark {
-  position: relative;
-  width: 65px;
-  height: 70px;
-  border-radius: 22px;
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.28) 0%, rgb(225 251 253 / 0.12) 100%);
-}
-
-.brand-dot,
-.brand-line {
-  position: absolute;
-}
-
-.brand-dot {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background-color: var(--color-orange);
-  top: 15px;
-  left: 15px;
-}
-
-.brand-dot--small {
-  width: 12px;
-  height: 12px;
-  background-color: var(--color-teal);
-  top: 18px;
-  right: 14px;
-  left: auto;
-}
-
-.brand-line {
-  width: 34px;
-  height: 10px;
-  border-radius: 999px;
-  background-color: var(--color-negro);
-  left: 15px;
-  bottom: 16px;
-}
-
-.marca p {
-  color: var(--color-white);
-  text-shadow: 0 6px 18px rgb(14 8 27 / 0.22);
-  text-align: center;
+.hero-title {
+  max-width: 12ch;
+  font-size: clamp(2.7rem, 5.6vw, 5.6rem);
   font-weight: 600;
-  font-size: clamp(1.55em, 1.8vw, 2.1em);
-  white-space: nowrap;
+  letter-spacing: -0.045em;
+  line-height: 0.98;
 }
 
-.papas-container {
-  grid-column: span 2 / span 2;
-  grid-row: span 3 / span 3;
-  grid-column-start: 6;
+.hero-soft {
+  color: var(--ink-3);
+  font-weight: 300;
+}
+
+.hero-strong {
   position: relative;
+  display: inline-block;
+  color: var(--bottle);
 }
 
-.mock-visual--vertical {
+.hero-strong i {
+  color: var(--signal);
+  font-family: var(--font-serif);
+  font-style: normal;
+  font-weight: 400;
+}
+
+.hero-strong::after {
+  content: '';
   position: absolute;
-  inset: 0;
-  opacity: 0.46;
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / 0.015), transparent 60%),
-    linear-gradient(135deg, rgb(245 154 75 / 0.025) 0%, rgb(217 94 20 / 0.02) 100%);
+  right: 0.1em;
+  bottom: 0.02em;
+  left: 0;
+  height: 0.08em;
+  background: var(--signal);
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: underlineIn 0.9s var(--ease-out) 0.65s forwards;
 }
 
-.papas-container:hover .mock-visual--vertical,
-.img-alitas:hover .mock-visual--secondary,
-.chicken-container:hover .mock-visual--hero {
-  transform: scale(1.08);
+@keyframes underlineIn {
+  to {
+    transform: scaleX(1);
+  }
 }
 
-.pharmacy-icon {
-  position: absolute;
-  width: 28%;
-  aspect-ratio: 1;
+.hero-lede {
+  max-width: 46ch;
+  margin-top: clamp(1rem, 2vw, 1.6rem);
+  color: var(--ink-2);
+  font-size: clamp(0.92rem, 1.1vw, 1.02rem);
+  line-height: 1.75;
+}
+
+.hero-search {
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: rgb(255 255 255 / 0.7);
-  animation: pharmacyPulse 1.8s ease-in-out infinite;
+  gap: 0.7rem;
+  width: min(100%, 610px);
+  margin-top: clamp(1.5rem, 2.6vw, 2.2rem);
+  padding: 0.32rem 0.32rem 0.32rem 1rem;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-sm);
+  background: var(--paper-raised);
+  box-shadow: 4px 4px 0 0 var(--bottle);
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
 
-.pharmacy-icon svg {
-  width: 100%;
-  height: 100%;
+.hero-search:focus-within {
+  box-shadow: 4px 4px 0 0 var(--signal);
 }
 
-.pharmacy-icon--tablet {
-  top: 16%;
-  left: 18%;
-  animation-delay: 0s;
+.hero-search-icon {
+  flex-shrink: 0;
+  color: var(--ink-3);
 }
 
-.pharmacy-icon--leaf {
-  top: 16%;
-  right: 18%;
-  animation-delay: 0.3s;
+.hero-search input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.55rem 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.88rem;
+  outline: none;
 }
 
-.pharmacy-icon--bottle {
-  bottom: 16%;
-  left: 18%;
-  animation-delay: 0.6s;
+.hero-search input::placeholder {
+  color: var(--ink-3);
 }
 
-.pharmacy-icon--clipboard {
-  bottom: 16%;
-  right: 18%;
-  animation-delay: 0.9s;
+.hero-search input::-webkit-search-cancel-button {
+  display: none;
 }
 
-@keyframes pharmacyPulse {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 0.7;
-  }
-  50% {
-    transform: scale(1.1);
-    opacity: 1;
-  }
+.hero-search-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.62rem 0.85rem;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: var(--bottle);
+  color: var(--paper-raised);
+  font-size: 0.76rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 
-.papas-container p {
+.hero-search-submit:hover {
+  background: var(--signal);
+}
+
+.hero-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 1rem;
+}
+
+.hero-suggest-label {
+  margin-right: 0.15rem;
+  color: var(--ink-3);
+  font-size: 0.66rem;
+}
+
+.hero-suggest-chip {
+  padding: 0.22rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.hero-suggest-chip:hover {
+  border-color: var(--signal);
+  background: var(--signal-soft);
+  color: var(--signal-deep);
+}
+
+.index-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: 1.15rem 1.15rem 1rem;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(160deg, rgb(255 255 255 / 0.03), transparent 55%), var(--bottle);
+  color: var(--paper-raised);
+  box-shadow: 8px 8px 0 0 var(--mint);
+}
+
+.index-top {
+  display: flex;
+  justify-content: space-between;
+  color: rgb(251 250 245 / 0.7);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.index-figure {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: clamp(150px, 16vw, 210px);
+  margin: 0.8rem 0 0.9rem;
+  overflow: hidden;
+}
+
+.figure-ring {
+  position: absolute;
+  border: 1px solid rgb(251 250 245 / 0.14);
+  border-radius: 50%;
+}
+
+.figure-ring--one {
+  width: 190px;
+  height: 190px;
+}
+
+.figure-ring--two {
+  width: 130px;
+  height: 130px;
+  border-style: dashed;
+}
+
+.figure-rx {
+  position: relative;
+  z-index: 1;
+  font-size: clamp(4.6rem, 6vw, 6.4rem);
+  font-style: italic;
+  line-height: 0.8;
+}
+
+.figure-dot {
+  position: absolute;
+  top: 18%;
+  right: 21%;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--signal);
+  box-shadow: 0 0 0 5px rgb(239 90 47 / 0.12);
+}
+
+.figure-caption {
+  position: absolute;
+  bottom: 0.35rem;
+  left: 0;
+  color: rgb(251 250 245 / 0.58);
+  font-size: 0.5rem;
+  letter-spacing: 0.2em;
+  line-height: 1.5;
+}
+
+.index-list {
+  display: grid;
+  border-top: 1px solid rgb(251 250 245 / 0.14);
+}
+
+.index-list a {
+  display: grid;
+  grid-template-columns: 1.8rem minmax(0, 1fr) auto 1rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.66rem 0.2rem;
+  border-bottom: 1px solid rgb(251 250 245 / 0.12);
+  transition:
+    background-color 0.2s ease,
+    padding 0.2s ease;
+}
+
+.index-list a:hover {
+  padding-right: 0.4rem;
+  padding-left: 0.4rem;
+  background: rgb(251 250 245 / 0.06);
+}
+
+.index-no {
+  color: var(--signal-light);
+  font-size: 0.58rem;
+}
+
+.index-name {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.82rem;
+  line-height: 1.3;
+}
+
+.index-name small {
+  color: rgb(251 250 245 / 0.64);
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.index-count {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+
+.index-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 0.85rem;
+  color: rgb(251 250 245 / 0.68);
+  font-size: 0.58rem;
+}
+
+.index-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.index-foot .mono {
+  letter-spacing: 0.08em;
+}
+
+.ticket {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 1rem;
+  padding: 0.9rem 1.2rem;
+  border-top: 1px dashed var(--line-strong);
+  border-bottom: 1px dashed var(--line-strong);
+  background: rgb(251 250 245 / 0.5);
+}
+
+.ticket::before,
+.ticket::after {
+  content: '';
   position: absolute;
   top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  writing-mode: vertical-lr;
-  text-orientation: upright;
-  color: var(--color-white);
-  font-weight: 700;
-  font-size: clamp(1.6em, 2.5vw, 3.2em);
-  z-index: 1;
-  line-height: 1.1;
-  pointer-events: none;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: var(--paper);
+  transform: translateY(-50%);
 }
 
-.logo {
-  grid-row-start: 2;
-  padding: 20px 10px;
+.ticket::before {
+  left: -8px;
 }
 
-.logo-badge {
-  position: relative;
-  width: 130px;
-  height: 135px;
-  border-radius: 30px;
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.24) 0%, rgb(223 249 251 / 0.1) 100%);
+.ticket::after {
+  right: -8px;
+}
+
+.ticket-cell {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 0.65rem;
+  color: var(--ink-2);
 }
 
-.shield-logo {
-  width: 76px;
-  height: 76px;
-  animation: shieldGlow 2.6s ease-in-out infinite;
+.ticket-cell svg {
+  color: var(--signal-deep);
 }
 
-@keyframes shieldGlow {
-  0%,
-  100% {
-    transform: scale(1) rotate(0deg);
-    filter: drop-shadow(0 0 4px rgb(249 115 22 / 0.3));
-  }
-  50% {
-    transform: scale(1.06) rotate(6deg);
-    filter: drop-shadow(0 0 16px rgb(249 115 22 / 0.6));
-  }
-}
-
-.logo:hover .shield-logo {
-  animation: shieldHover 0.6s ease-in-out forwards;
-}
-
-@keyframes shieldHover {
-  0% {
-    transform: scale(1) rotate(0deg);
-  }
-  50% {
-    transform: scale(1.15) rotate(-8deg);
-  }
-  100% {
-    transform: scale(1.1) rotate(6deg);
-  }
-}
-
-.title {
-  grid-column: span 4 / span 4;
-  grid-row-start: 2;
-  width: 100%;
-  padding: 20px 6%;
-  text-align: center;
-  display: grid;
-  grid-template-rows: auto auto;
-  justify-items: center;
-  align-content: center;
-}
-
-.title-content {
-  display: grid;
-  gap: 10px;
-  max-width: min(100%, 720px);
-  padding: 22px 28px;
-  border: 1px solid var(--tile-border);
-  border-radius: var(--radius-xl);
-  background: linear-gradient(180deg, rgb(8 20 38 / 0.3), rgb(8 20 38 / 0.16));
-  backdrop-filter: blur(var(--tile-blur));
-  -webkit-backdrop-filter: blur(var(--tile-blur));
-  box-shadow: 0 18px 40px rgb(8 20 38 / 0.16);
-}
-
-.title h1 {
-  margin-bottom: 0;
-  font-size: clamp(2.6em, 3.6vw, 3.6em);
-  line-height: 0.95;
-  letter-spacing: 0.06em;
-  background: linear-gradient(95deg, #fff 12%, #ffd9bd 48%, #a9ecf4 88%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.title p {
-  max-width: 36ch;
-  color: rgb(255 255 255 / 0.86);
-  font-size: 1.02rem;
-  font-weight: 400;
-  line-height: 1.65;
-  letter-spacing: 0.01em;
-  text-wrap: balance;
-}
-
-.title-meta {
+.ticket-cell span {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 4px;
+  flex-direction: column;
+  line-height: 1.3;
 }
 
-.title-meta span {
-  padding: 5px 14px;
-  border: 1px solid rgb(255 255 255 / 0.28);
-  border-radius: var(--radius-pill);
-  background: rgb(255 255 255 / 0.12);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  color: #fff;
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+.ticket-cell small {
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
-.title span {
-  color: var(--color-orange-claro);
-  font-weight: 700;
+.ticket-cell strong {
+  font-size: 0.78rem;
+  font-weight: 500;
 }
 
-.gif-brasas {
-  grid-row-start: 3;
-}
-
-.mock-video {
+.ticket-code {
   display: flex;
   align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  background:
-    radial-gradient(circle at 20% 20%, rgb(255 255 255 / 0.025), transparent 30%),
-    linear-gradient(135deg, rgb(36 36 36 / 0.05) 0%, rgb(17 17 17 / 0.02) 100%);
+  gap: 0.65rem;
+  padding-left: 1rem;
+  border-left: 1px solid var(--line);
 }
 
-.signal {
-  position: absolute;
-  bottom: 18px;
-  width: 18px;
-  border-radius: 999px 999px 4px 4px;
-  background: linear-gradient(180deg, var(--color-green) 0%, var(--color-teal-oscuro) 100%);
-  animation: pulseBars 1.6s ease-in-out infinite;
+.ticket-code small {
+  color: var(--ink-3);
+  font-size: 0.52rem;
+  letter-spacing: 0.1em;
 }
 
-.signal--one {
-  left: 24px;
-  height: 42px;
-}
-
-.signal--two {
-  left: 52px;
-  height: 68px;
-  animation-delay: 0.18s;
-}
-
-.signal--three {
-  left: 80px;
-  height: 54px;
-  animation-delay: 0.36s;
-}
-
-.mock-video p {
-  color: var(--color-white);
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-shadow: 0 6px 16px rgb(10 24 45 / 0.18);
-}
-
-.img-alitas {
-  grid-column: span 2 / span 2;
-  grid-row-start: 3;
-  height: 100%;
-}
-
-.mock-visual--secondary {
-  background: linear-gradient(
-    135deg,
-    rgb(223 249 251 / 0.02) 0%,
-    rgb(255 240 228 / 0.015) 60%,
-    rgb(245 154 75 / 0.025) 100%
+.barcode {
+  width: 58px;
+  height: 20px;
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--ink) 0 1px,
+    transparent 1px 3px,
+    var(--ink) 3px 5px,
+    transparent 5px 6px,
+    var(--ink) 6px 7px,
+    transparent 7px 10px
   );
+  opacity: 0.72;
 }
 
-.folder-stack {
+.section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid var(--ink);
+}
+
+.section-head h2 {
+  margin-top: 0.45rem;
+  font-size: clamp(1.5rem, 2.4vw, 2.1rem);
+  font-weight: 600;
+}
+
+.section-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding-bottom: 0.2rem;
+  color: var(--ink-2);
+  font-size: 0.72rem;
+  font-weight: 500;
+  transition:
+    color 0.2s ease,
+    gap 0.2s ease;
+}
+
+.section-link:hover {
+  gap: 0.65rem;
+  color: var(--signal-deep);
+}
+
+.quick-list {
+  display: grid;
+}
+
+.quick-list li {
+  border-bottom: 1px solid var(--line);
+}
+
+.quick-row {
+  display: grid;
+  grid-template-columns: 2.2rem 2.6rem minmax(0, 1fr) auto 2.2rem;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.85rem 0.4rem;
+  transition:
+    background-color 0.2s ease,
+    padding 0.2s ease;
+}
+
+.quick-row:hover {
+  padding-right: 0.8rem;
+  padding-left: 0.8rem;
+  background: var(--mint-soft);
+}
+
+.quick-no {
+  color: var(--ink-3);
+  font-size: 0.62rem;
+}
+
+.quick-icon {
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  background: var(--paper-raised);
+  color: var(--bottle);
+}
+
+.quick-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  line-height: 1.35;
+}
+
+.quick-copy strong {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.quick-copy small {
+  overflow: hidden;
+  margin-top: 0.15rem;
+  color: var(--ink-3);
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quick-tag {
+  color: var(--ink-3);
+  font-size: 0.56rem;
+  letter-spacing: 0.12em;
+}
+
+.quick-arrow {
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--ink-2);
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.quick-row:hover .quick-arrow {
+  background: var(--bottle);
+  color: var(--paper-raised);
+  transform: rotate(45deg);
+}
+
+.quick-loading {
+  padding: 1.5rem 0.4rem;
+  color: var(--ink-3);
+  font-size: 0.84rem;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  gap: clamp(1rem, 2vw, 1.5rem);
+}
+
+.department-card {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 260px;
+  padding: clamp(1.3rem, 2.4vw, 2rem);
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--mint);
+  color: var(--ink);
+}
+
+.department-copy {
+  position: relative;
+  z-index: 1;
+  max-width: 36rem;
+}
+
+.department-copy h2 {
+  margin-top: 0.6rem;
+  font-size: clamp(1.35rem, 2.2vw, 2rem);
+}
+
+.department-copy p:not(.eyebrow) {
+  max-width: 40ch;
+  margin-top: 0.7rem;
+  color: var(--ink-2);
+  font-size: 0.82rem;
+  line-height: 1.7;
+}
+
+.department-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 1.1rem;
+  padding-bottom: 0.2rem;
+  border-bottom: 1px solid var(--ink);
+  font-size: 0.74rem;
+  font-weight: 500;
+  transition:
+    gap 0.2s ease,
+    color 0.2s ease;
+}
+
+.department-link:hover {
+  gap: 0.65rem;
+  color: var(--signal-deep);
+}
+
+.department-graphic {
+  position: relative;
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 9rem;
+  height: 9rem;
+  color: var(--bottle);
+}
+
+.department-graphic::before {
+  content: '';
   position: absolute;
   inset: 0;
-  margin: auto;
-  width: 70%;
-  height: 56%;
+  border: 1px solid rgb(13 59 49 / 0.18);
+  border-radius: 50%;
 }
 
-.folder-stack span {
+.department-graphic::after {
+  content: '';
   position: absolute;
-  left: 0;
-  right: 0;
-  margin: auto;
-  height: 38%;
-  border-radius: 18px;
-  background-color: rgb(255 255 255 / 0.72);
-  border: 2px solid rgb(14 8 27 / 0.08);
+  inset: 1.1rem;
+  border: 1px dashed rgb(13 59 49 / 0.22);
+  border-radius: 50%;
 }
 
-.folder-stack span:nth-child(1) {
-  top: 0;
-  width: 88%;
+.department-rx {
+  font-size: 2.9rem;
+  font-style: italic;
+  line-height: 1;
 }
 
-.folder-stack span:nth-child(2) {
-  top: 28%;
-  width: 100%;
+.stats-card {
+  display: flex;
+  flex-direction: column;
+  padding: clamp(1.2rem, 2vw, 1.6rem);
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-sm);
+  background: var(--paper-raised);
 }
 
-.folder-stack span:nth-child(3) {
-  top: 56%;
-  width: 78%;
-}
-
-.pharmacy-video {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  border-radius: 20px;
-}
-
-.action-link {
-  grid-column: span 2 / span 2;
-  grid-column-start: 4;
-  grid-row-start: 3;
+.stats-head {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 28px 4%;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
-.animated-link {
-  position: relative;
-  width: fit-content;
-  min-width: 0;
+.stats-head .mono {
+  color: var(--ink-3);
+  font-size: 0.54rem;
+  letter-spacing: 0.08em;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 0.9rem;
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+}
+
+.stats-grid div {
+  padding: 0.8rem 0.85rem;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.stats-grid dt {
+  color: var(--ink-3);
+  font-size: 0.62rem;
+}
+
+.stats-grid dd {
+  margin-top: 0.15rem;
+  font-family: var(--font-mono);
+  font-size: clamp(1.5rem, 2.2vw, 2rem);
+  line-height: 1;
+}
+
+.stats-foot {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
-  overflow: hidden;
-  border: 1px solid rgb(255 255 255 / 0.32);
-  border-radius: 999px;
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.26), rgb(255 255 255 / 0.14));
-  padding: 14px 22px;
-  color: var(--color-white);
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  text-decoration: none;
-  box-shadow: 0 14px 28px rgb(14 8 27 / 0.14);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 1rem;
+  color: var(--ink-3);
+  font-size: 0.56rem;
+  letter-spacing: 0.05em;
 }
 
-.animated-link svg {
-  z-index: 1;
-  width: 18px;
-  height: 18px;
-  fill: currentColor;
-  transition: all 0.8s cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-.text {
-  position: relative;
-  z-index: 1;
-  transform: none;
-  white-space: nowrap;
-  transition: all 0.8s cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-.animated-link:hover {
-  transform: translateY(-2px) scale(1.02);
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.34), rgb(255 255 255 / 0.18));
-  box-shadow: 0 18px 32px rgb(14 8 27 / 0.18);
-}
-
-.animated-link:hover .cta-arrow {
-  transform: translateX(3px);
-}
-
-@keyframes fadeIn {
-  0% {
-    opacity: 0;
-    transform: scale(0.95);
+@media (max-width: 1180px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr) minmax(290px, 0.6fr);
   }
 
-  100% {
-    opacity: 1;
-    transform: scale(1);
+  .hero-title {
+    font-size: clamp(2.5rem, 5.2vw, 4.6rem);
   }
 }
 
-@keyframes pulseBars {
-  0%,
-  100% {
-    transform: translateY(0);
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: 1fr;
   }
 
-  50% {
-    transform: translateY(-6px);
-  }
-}
-
-@media only screen and (max-width: 1440px) {
-  .inicio-container {
-    padding: 12px 4%;
-  }
-}
-
-@media only screen and (max-width: 1280px) {
-  .inicio-container {
-    padding: 12px 2%;
-  }
-
-  .marca p {
-    font-size: 1.6em;
-  }
-
-  .logo-badge {
-    width: 100px;
-    height: 105px;
-  }
-
-  .shield-logo {
-    width: 60px;
-    height: 60px;
-  }
-
-  .title h1 {
-    font-size: 2.4em;
-  }
-}
-
-@media screen and (max-width: 1024px) {
-  .inicio-container {
-    grid-template-columns: repeat(4, 1fr);
-    grid-template-rows: repeat(3, auto);
-    gap: 10px;
-  }
-
-  .chicken-container {
-    --tile-bg-size: 400% 300%;
-    --tile-bg-position: 0% 0%;
-    grid-column: 1 / 3;
-    grid-row: 1;
-    height: auto;
-  }
-
-  .marca {
-    --tile-bg-size: 400% 300%;
-    --tile-bg-position: 33.33% 0%;
-    grid-column: 3 / 5;
-    grid-row: 1;
-    gap: 10px;
-  }
-
-  .marca p {
-    font-size: 1.3em;
-  }
-
-  .logo {
-    --tile-bg-size: 400% 300%;
-    --tile-bg-position: 0% 50%;
-    grid-column: 1;
-    grid-row: 2;
-    height: 200px;
-  }
-
-  .title {
-    --tile-bg-size: 200% 300%;
-    --tile-bg-position: 33.33% 50%;
-    grid-column: 2 / 4;
-    grid-row: 2;
-  }
-
-  .title h1 {
-    font-size: 2em;
-  }
-
-  .title-content {
-    padding: 18px 22px;
-  }
-
-  .gif-brasas {
-    --tile-bg-size: 400% 300%;
-    --tile-bg-position: 0% 100%;
-    grid-column: 1 / 2;
-    grid-row: 3;
-  }
-
-  .img-alitas {
-    --tile-bg-size: 400% 300%;
-    --tile-bg-position: 33.33% 100%;
-    grid-column: 2 / 3;
-    grid-row: 3;
-    height: 200px;
-  }
-
-  .action-link {
-    --tile-bg-size: 400% 300%;
-    --tile-bg-position: 66.66% 100%;
-    grid-column: 3 / 4;
-    grid-row: 3;
-  }
-
-  .papas-container {
-    --tile-bg-size: 400% 150%;
-    --tile-bg-position: 100% 100%;
-    grid-column: 4 / 5;
-    grid-row: 2 / span 2;
-  }
-}
-
-@media only screen and (max-width: 768px) {
-  .inicio-container {
+  .index-card {
     min-height: auto;
-    padding-top: 12px;
-    padding-bottom: 72px;
   }
 
-  .title h1 {
-    font-size: 1.7em;
+  .index-figure {
+    height: 140px;
   }
 
-  .title p,
-  .text {
-    font-size: 0.8em;
+  .split {
+    grid-template-columns: 1fr;
   }
 
-  .animated-link {
-    padding: 12px 18px;
+  .department-card {
+    min-height: 230px;
   }
 }
 
-@media only screen and (max-width: 480px) {
-  .inicio-container {
-    grid-template-columns: repeat(2, 1fr);
-    grid-template-rows: repeat(6, auto);
+@media (max-width: 680px) {
+  .home {
+    gap: 2rem;
+    padding-right: 1rem;
+    padding-left: 1rem;
   }
 
-  .marca {
-    --tile-bg-size: 100% 800%;
-    --tile-bg-position: 0% 0%;
-    grid-column: 1 / span 2;
-    gap: 10px;
+  .hero-kicker {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.5rem;
   }
 
-  .marca p {
-    font-size: 1.1em;
+  .hero-title {
+    font-size: clamp(2.35rem, 11vw, 3.2rem);
+    letter-spacing: -0.035em;
   }
 
-  .chicken-container {
-    --tile-bg-size: 200% 800%;
-    --tile-bg-position: 0% 14.28%;
-    grid-column: 1 / span 2;
-    grid-row: 2;
-    height: 200px;
+  .hero-search {
+    flex-wrap: wrap;
+    padding: 0.6rem;
+    box-shadow: 3px 3px 0 0 var(--bottle);
   }
 
-  .logo {
-    --tile-bg-size: 200% 800%;
-    --tile-bg-position: 100% 14.28%;
-    grid-column: 1;
-    grid-row: 4;
-    height: 116px;
+  .hero-search-icon {
+    margin-left: 0.15rem;
   }
 
-  .logo-badge {
-    width: 80px;
-    height: 85px;
+  .hero-search input {
+    width: calc(100% - 2.2rem);
+    flex: 0 0 calc(100% - 2.2rem);
   }
 
-  .shield-logo {
-    width: 48px;
-    height: 48px;
+  .hero-search-submit {
+    width: 100%;
+    justify-content: center;
   }
 
-  .title {
-    --tile-bg-size: 100% 800%;
-    --tile-bg-position: 0% 28.57%;
-    grid-column: 1 / span 2;
-    grid-row: 3;
+  .ticket {
+    grid-template-columns: 1fr;
+    gap: 0.7rem;
+    padding: 1rem 1.1rem;
   }
 
-  .title h1 {
-    font-size: 1.6em;
+  .ticket-code {
+    padding: 0.6rem 0 0;
+    border-top: 1px dashed var(--line-strong);
+    border-left: 0;
   }
 
-  .title p {
-    font-size: 0.7em;
+  .quick-row {
+    grid-template-columns: 1.8rem 2.4rem minmax(0, 1fr) 2rem;
+    gap: 0.65rem;
   }
 
-  .gif-brasas {
-    --tile-bg-size: 200% 800%;
-    --tile-bg-position: 0% 57.14%;
-    grid-column: 2;
-    grid-row: 4;
-    min-height: 116px;
+  .quick-tag {
+    display: none;
   }
 
-  .img-alitas {
-    --tile-bg-size: 200% 800%;
-    --tile-bg-position: 100% 57.14%;
-    grid-column: 1;
-    grid-row: 5;
-    height: 116px;
+  .quick-icon {
+    width: 2.4rem;
+    height: 2.4rem;
   }
 
-  .action-link {
-    --tile-bg-size: 100% 800%;
-    --tile-bg-position: 0% 71.42%;
-    grid-column: 2;
-    grid-row: 5;
+  .department-graphic {
+    display: none;
   }
 
-  .animated-link svg {
-    width: 16px;
-    height: 16px;
-  }
-
-  .papas-container {
-    --tile-bg-size: 100% 800%;
-    --tile-bg-position: 0% 85.71%;
-    grid-column: 1 / span 2;
-    grid-row: 6;
-    height: 160px;
-  }
-
-  .papas-container p {
-    writing-mode: horizontal-tb;
+  .stats-grid dd {
+    font-size: 1.6rem;
   }
 }
 </style>

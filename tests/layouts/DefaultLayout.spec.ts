@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import DefaultLayout from '@/layouts/DefaultLayout.vue';
 
@@ -16,30 +16,52 @@ describe('defaultLayout', () => {
     push.mockReset();
     route.path = '/';
     route.meta = { navGroup: 'home' };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve([]),
+    }));
   });
 
-  it('renders slot content with the reduced bottom navigation', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    document.body.innerHTML = '';
+    document.body.style.overflow = '';
+  });
+
+  it('renders slot content with the sidebar and mobile navigation', () => {
     const wrapper = mount(DefaultLayout, {
       slots: {
         default: '<div class="test-content">Content</div>',
       },
     });
 
-    expect(wrapper.findAll('.elpatita-nav-item')).toHaveLength(3);
-    expect(wrapper.text()).toContain('หน้าแรก');
+    expect(wrapper.findAll('.nav-item')).toHaveLength(3);
+    expect(wrapper.findAll('.mobile-nav-item')).toHaveLength(4);
+    expect(wrapper.text()).toContain('ภาพรวม');
     expect(wrapper.text()).toContain('เครื่องมือ');
     expect(wrapper.text()).toContain('กลุ่มงาน');
     expect(wrapper.find('.test-content').exists()).toBe(true);
     expect(wrapper.text()).toContain('Content');
   });
 
-  it('marks the tools button active for tools-group routes', () => {
+  it('marks the tools item active for tools-group routes', () => {
     route.path = '/reports';
     route.meta = { navGroup: 'tools' };
 
     const wrapper = mount(DefaultLayout);
-    const buttons = wrapper.findAll('.elpatita-nav-item');
+    const items = wrapper.findAll('.nav-item');
 
-    expect(buttons[1]?.classes()).toContain('elpatita-nav-item--active');
+    expect(items[1]?.classes()).toContain('is-active');
+    expect(items[1]?.attributes('aria-current')).toBe('page');
+  });
+
+  it('opens the command palette from the sidebar search', async () => {
+    const wrapper = mount(DefaultLayout);
+
+    await wrapper.get('.search-trigger').trigger('click');
+    await wrapper.vm.$nextTick();
+
+    const input = document.body.querySelector<HTMLInputElement>('.palette-input');
+    expect(input?.placeholder).toContain('ค้นหาเครื่องมือ รายงาน หรือหน้าที่ต้องการ');
   });
 });
